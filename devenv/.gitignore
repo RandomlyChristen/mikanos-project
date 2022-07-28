@@ -1,0 +1,4 @@
+.vagrant
+*.retry
+*.log
+x86_64-elf/
