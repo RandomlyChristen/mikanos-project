@@ -1,0 +1,44 @@
+/home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MikanLoaderPkg/Loader/OUTPUT/Main.obj:   /home/isugyun/edk2/MikanLoaderPkg/Main.c \
+  /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MikanLoaderPkg/Loader/DEBUG/AutoGen.h \
+  /home/isugyun/edk2/MdePkg/Include/Uefi.h \
+  /home/isugyun/edk2/MdePkg/Include/Uefi/UefiBaseType.h \
+  /home/isugyun/edk2/MdePkg/Include/Base.h \
+  /home/isugyun/edk2/MdePkg/Include/X64/ProcessorBind.h \
+  /home/isugyun/edk2/MdePkg/Include/Uefi/UefiSpec.h \
+  /home/isugyun/edk2/MdePkg/Include/Uefi/UefiMultiPhase.h \
+  /home/isugyun/edk2/MdePkg/Include/Guid/WinCertificate.h \
+  /home/isugyun/edk2/MdePkg/Include/Protocol/DevicePath.h \
+  /home/isugyun/edk2/MdePkg/Include/Guid/PcAnsi.h \
+  /home/isugyun/edk2/MdePkg/Include/IndustryStandard/Bluetooth.h \
+  /home/isugyun/edk2/MdePkg/Include/IndustryStandard/Acpi60.h \
+  /home/isugyun/edk2/MdePkg/Include/IndustryStandard/Acpi51.h \
+  /home/isugyun/edk2/MdePkg/Include/IndustryStandard/Acpi50.h \
+  /home/isugyun/edk2/MdePkg/Include/IndustryStandard/Acpi40.h \
+  /home/isugyun/edk2/MdePkg/Include/IndustryStandard/Acpi30.h \
+  /home/isugyun/edk2/MdePkg/Include/IndustryStandard/Acpi20.h \
+  /home/isugyun/edk2/MdePkg/Include/IndustryStandard/Acpi10.h \
+  /home/isugyun/edk2/MdePkg/Include/IndustryStandard/AcpiAml.h \
+  /home/isugyun/edk2/MdePkg/Include/Protocol/SimpleTextIn.h \
+  /home/isugyun/edk2/MdePkg/Include/Protocol/SimpleTextInEx.h \
+  /home/isugyun/edk2/MdePkg/Include/Protocol/SimpleTextOut.h \
+  /home/isugyun/edk2/MdePkg/Include/Uefi/UefiPxe.h \
+  /home/isugyun/edk2/MdePkg/Include/Uefi/UefiGpt.h \
+  /home/isugyun/edk2/MdePkg/Include/Uefi/UefiInternalFormRepresentation.h \
+  /home/isugyun/edk2/MdePkg/Include/Guid/HiiFormMapMethodGuid.h \
+  /home/isugyun/edk2/MdePkg/Include/Library/UefiLib.h \
+  /home/isugyun/edk2/MdePkg/Include/IndustryStandard/Acpi.h \
+  /home/isugyun/edk2/MdePkg/Include/IndustryStandard/Acpi63.h \
+  /home/isugyun/edk2/MdePkg/Include/IndustryStandard/Acpi62.h \
+  /home/isugyun/edk2/MdePkg/Include/IndustryStandard/Acpi61.h \
+  /home/isugyun/edk2/MdePkg/Include/Protocol/DriverBinding.h \
+  /home/isugyun/edk2/MdePkg/Include/Protocol/DriverConfiguration.h \
+  /home/isugyun/edk2/MdePkg/Include/Protocol/DriverConfiguration2.h \
+  /home/isugyun/edk2/MdePkg/Include/Protocol/ComponentName.h \
+  /home/isugyun/edk2/MdePkg/Include/Protocol/ComponentName2.h \
+  /home/isugyun/edk2/MdePkg/Include/Protocol/DriverDiagnostics.h \
+  /home/isugyun/edk2/MdePkg/Include/Protocol/DriverDiagnostics2.h \
+  /home/isugyun/edk2/MdePkg/Include/Protocol/GraphicsOutput.h \
+  /home/isugyun/edk2/MdePkg/Include/Protocol/SimpleFileSystem.h \
+  /home/isugyun/edk2/MdePkg/Include/Library/BaseLib.h
+
+# Updated 

@@ -1,0 +1,16 @@
+/home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseMemoryLib/BaseMemoryLib/OUTPUT/SetMem.obj
+/home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseMemoryLib/BaseMemoryLib/OUTPUT/ScanMem64Wrapper.obj
+/home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseMemoryLib/BaseMemoryLib/OUTPUT/ScanMem32Wrapper.obj
+/home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseMemoryLib/BaseMemoryLib/OUTPUT/ScanMem16Wrapper.obj
+/home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseMemoryLib/BaseMemoryLib/OUTPUT/ScanMem8Wrapper.obj
+/home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseMemoryLib/BaseMemoryLib/OUTPUT/ZeroMemWrapper.obj
+/home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseMemoryLib/BaseMemoryLib/OUTPUT/CompareMemWrapper.obj
+/home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseMemoryLib/BaseMemoryLib/OUTPUT/SetMem64Wrapper.obj
+/home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseMemoryLib/BaseMemoryLib/OUTPUT/SetMem32Wrapper.obj
+/home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseMemoryLib/BaseMemoryLib/OUTPUT/SetMem16Wrapper.obj
+/home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseMemoryLib/BaseMemoryLib/OUTPUT/SetMemWrapper.obj
+/home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseMemoryLib/BaseMemoryLib/OUTPUT/CopyMemWrapper.obj
+/home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseMemoryLib/BaseMemoryLib/OUTPUT/IsZeroBufferWrapper.obj
+/home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseMemoryLib/BaseMemoryLib/OUTPUT/MemLibGeneric.obj
+/home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseMemoryLib/BaseMemoryLib/OUTPUT/MemLibGuid.obj
+/home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseMemoryLib/BaseMemoryLib/OUTPUT/CopyMem.obj

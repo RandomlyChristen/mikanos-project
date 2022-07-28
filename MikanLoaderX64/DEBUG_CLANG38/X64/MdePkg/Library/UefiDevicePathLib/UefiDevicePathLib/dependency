@@ -1,0 +1,13 @@
+
+
+-include /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib/OUTPUT/DevicePathFromText.obj.deps
+
+-include /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib/OUTPUT/DevicePathUtilities.obj.deps
+
+-include /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib/OUTPUT/DevicePathUtilitiesDxeSmm.obj.deps
+
+-include /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib/OUTPUT/UefiDevicePathLib.obj.deps
+
+-include /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib/OUTPUT/DevicePathToText.obj.deps
+
+               

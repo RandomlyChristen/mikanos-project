@@ -1,0 +1,10 @@
+/home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseMemoryLib/BaseMemoryLib/OUTPUT/SetMem32Wrapper.obj:   /home/isugyun/edk2/MdePkg/Library/BaseMemoryLib/SetMem32Wrapper.c \
+  /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseMemoryLib/BaseMemoryLib/DEBUG/AutoGen.h \
+  /home/isugyun/edk2/MdePkg/Include/Base.h \
+  /home/isugyun/edk2/MdePkg/Include/X64/ProcessorBind.h \
+  /home/isugyun/edk2/MdePkg/Library/BaseMemoryLib/MemLibInternals.h \
+  /home/isugyun/edk2/MdePkg/Include/Library/BaseMemoryLib.h \
+  /home/isugyun/edk2/MdePkg/Include/Library/BaseLib.h \
+  /home/isugyun/edk2/MdePkg/Include/Library/DebugLib.h
+
+# Updated 

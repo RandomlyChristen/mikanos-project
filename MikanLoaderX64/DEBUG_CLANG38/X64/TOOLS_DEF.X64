@@ -1,0 +1,202 @@
+CC_FLAGS = -g -Os -fshort-wchar -fno-builtin -fno-strict-aliasing -Wall -Werror -Wno-array-bounds -include AutoGen.h -fno-common -ffunction-sections -fdata-sections -DSTRING_ARRAY_NAME=$(BASE_NAME)Strings -Wno-parentheses-equality -Wno-tautological-compare -Wno-tautological-constant-out-of-range-compare -Wno-empty-body -Wno-unused-const-variable -Wno-varargs -Wno-unknown-warning-option -fno-stack-protector -mms-bitfields -Wno-address -Wno-shift-negative-value -Wno-unknown-pragmas -Wno-incompatible-library-redeclaration -fno-asynchronous-unwind-tables -mno-sse -mno-mmx -msoft-float -mno-implicit-float  -ftrap-function=undefined_behavior_has_been_optimized_away_by_clang -funsigned-char -fno-ms-extensions -Wno-null-dereference -m64 "-DEFIAPI=__attribute__((ms_abi))" -mno-red-zone -mcmodel=small -fpie -Oz -flto -target x86_64-pc-linux-gnu -g
+CC = clang
+CC_FAMILY = GCC
+CC_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+DLINK_FLAGS = -nostdlib -Wl,-n,-q,--gc-sections -z common-page-size=0x40 -Wl,--entry,$(IMAGE_ENTRY_POINT) -u $(IMAGE_ENTRY_POINT) -Wl,-Map,$(DEST_DIR_DEBUG)/$(BASE_NAME).map,--whole-archive -flto -Wl,-Oz -Wl,-melf_x86_64 -Wl,--oformat=elf64-x86-64 -Wl,-pie -mcmodel=small
+DLINK = clang
+DLINK_FAMILY = GCC
+DLINK_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+DLINK2_FLAGS = -Wl,--defsym=PECOFF_HEADER_SIZE=0x228 -Wl,--script=$(EDK_TOOLS_PATH)/Scripts/GccBase.lds -Wno-error -O3
+DLINK2_FAMILY = GCC
+DLINK2_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+OBJCOPY_ADDDEBUGFLAG = --add-gnu-debuglink=$(DEBUG_DIR)/$(MODULE_NAME).debug
+OBJCOPY = objcopy
+OBJCOPY_FLAGS = 
+OBJCOPY_FAMILY = GCC
+OBJCOPY_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+SLINK = llvm-ar
+SLINK_FAMILY = GCC
+SLINK_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+ASLDLINK = clang
+ASLDLINK_FLAGS = -nostdlib -Wl,-n,-q,--gc-sections -z common-page-size=0x40 -Wl,--defsym=PECOFF_HEADER_SIZE=0 -Wl,--script=$(EDK_TOOLS_PATH)/Scripts/GccBase.lds -Wl,--entry,ReferenceAcpiTable -u ReferenceAcpiTable -Wl,-m,elf_x86_64
+ASLDLINK_FAMILY = GCC
+ASLDLINK_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+ASM = clang
+ASM_FLAGS = -c -x assembler -imacros AutoGen.h -m64 -target x86_64-pc-linux-gnu
+ASM_FAMILY = GCC
+ASM_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+PP = clang
+PP_FLAGS = -E -x assembler-with-cpp -include AutoGen.h -DOPENSBI_EXTERNAL_SBI_TYPES=OpensbiTypes.h -target x86_64-pc-linux-gnu
+PP_FAMILY = GCC
+PP_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+VFRPP = clang
+VFRPP_FLAGS = -x c -E -P -DVFRCOMPILE --include $(MODULE_NAME)StrDefs.h -target x86_64-pc-linux-gnu
+VFRPP_FAMILY = GCC
+VFRPP_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+ASLCC = clang
+ASLCC_FLAGS = -x c -m64 -fno-lto -target x86_64-pc-linux-gnu
+ASLCC_FAMILY = GCC
+ASLCC_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+ASLPP = clang
+ASLPP_FLAGS = -x c -E -include AutoGen.h -target x86_64-pc-linux-gnu
+ASLPP_FAMILY = GCC
+ASLPP_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+RC = objcopy
+RC_FLAGS = -I binary -O elf64-x86-64        -B i386    --rename-section .data=.hii
+RC_FAMILY = GCC
+RC_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+NASM_FLAGS = -f elf64
+NASM_FAMILY = GCC
+NASM = nasm
+NASM_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+
+ASL = iasl
+ASL_FLAGS = 
+ASL_OUTFLAGS = -p
+ASL_FAMILY = GCC
+ASL_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+APP_FLAGS = 
+APP_FAMILY = GCC
+APP_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+DEPS_FLAGS = -MMD -MF $@.deps
+DEPS_FAMILY = GCC
+DEPS_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+ARCHASM_FAMILY = GCC
+ARCHASM_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+ARCHCC_FAMILY = GCC
+ARCHCC_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+ARCHDLINK_FAMILY = GCC
+ARCHDLINK_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+ASM16_FAMILY = GCC
+ASM16_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+ASMLINK_FAMILY = GCC
+ASMLINK = bin16\link16.exe
+ASMLINK_FLAGS = /nologo /tiny
+ASMLINK_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+ASMPATH_FAMILY = GCC
+ASMPATH_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+BROTLI_FAMILY = GCC
+BROTLI = BrotliCompress
+BROTLI_GUID = 3D532050-5CDA-4FD0-879E-0F7F630D5AFB
+BROTLI_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+CCPATH_FAMILY = GCC
+CCPATH_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+CRC32_FAMILY = GCC
+CRC32 = GenCrc32
+CRC32_GUID = FC1BCDB0-7D31-49AA-936A-A4600D9DD083
+CRC32_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+DLINKPATH_FAMILY = GCC
+DLINKPATH_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+DSYMUTIL_FAMILY = GCC
+DSYMUTIL_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+DTC_FAMILY = GCC
+DTC_FLAGS = -H epapr
+DTC = dtc
+DTC_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+DTCPP_FAMILY = GCC
+DTCPP = cpp
+DTCPP_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+FROMELF_FAMILY = GCC
+FROMELF_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+FROMELFPATH_FAMILY = GCC
+FROMELFPATH_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+GENFW_FAMILY = GCC
+GENFW = GenFw
+GENFW_FLAGS = 
+GENFW_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+LZMA_FAMILY = GCC
+LZMA = LzmaCompress
+LZMA_GUID = EE4E5898-3914-4259-9D6E-DC7BD79403CF
+LZMA_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+LZMAF86_FAMILY = GCC
+LZMAF86 = LzmaF86Compress
+LZMAF86_GUID = D42AE6BD-1352-4bfb-909A-CA72A6EAE889
+LZMAF86_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+MTOC_FAMILY = GCC
+MTOC_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+NASMB_FAMILY = GCC
+NASMB_FLAGS = -f bin
+NASMB_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+OPTROM_FAMILY = GCC
+OPTROM = EfiRom
+OPTROM_FLAGS = -e
+OPTROM_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+PKCS7SIGN_FAMILY = GCC
+PKCS7SIGN = Pkcs7Sign
+PKCS7SIGN_GUID = 4AAFD29D-68DF-49EE-8AA9-347D375665A7
+PKCS7SIGN_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+PLATFORM_FAMILY = GCC
+PLATFORM_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+PPPATH_FAMILY = GCC
+PPPATH_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+RSA2048SHA256SIGN_FAMILY = GCC
+RSA2048SHA256SIGN = Rsa2048Sha256Sign
+RSA2048SHA256SIGN_GUID = A7717414-C616-4977-9420-844712A735BF
+RSA2048SHA256SIGN_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+SLINKPATH_FAMILY = GCC
+SLINKPATH_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+SYMRENAME_FAMILY = GCC
+SYMRENAME = echo
+SYMRENAME_FLAGS = Symbol renaming not needed for
+SYMRENAME_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+TIANO_FAMILY = GCC
+TIANO = TianoCompress
+TIANO_GUID = A31280AD-481E-41B6-95E8-127F4C984779
+TIANO_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+VFR_FAMILY = GCC
+VFR = VfrCompile
+VFR_FLAGS = -l -n
+VFR_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+VFRPPPATH_FAMILY = GCC
+VFRPPPATH_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+
+VPDTOOL_FAMILY = GCC
+VPDTOOL = BPDG
+VPDTOOL_GUID = 8C3D856A-9BE6-468E-850A-24F7A8D38E08
+VPDTOOL_BUILDRULEORDER = nasm asm Asm ASM S s nasmb asm16
+

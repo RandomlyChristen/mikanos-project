@@ -1,0 +1,7 @@
+-I/home/isugyun/edk2/MdePkg/Library/BaseLib/X64
+-I/home/isugyun/edk2/MdePkg/Library/BaseLib
+-I/home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/DEBUG
+-I/home/isugyun/edk2/MdePkg
+-I/home/isugyun/edk2/MdePkg/Include
+-I/home/isugyun/edk2/MdePkg/Test/UnitTest/Include
+-I/home/isugyun/edk2/MdePkg/Include/X64
