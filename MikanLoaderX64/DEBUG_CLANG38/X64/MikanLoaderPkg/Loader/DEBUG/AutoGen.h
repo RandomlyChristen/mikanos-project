@@ -43,13 +43,16 @@ extern EFI_GUID gEfiAcpi20TableGuid;
 extern EFI_GUID gEfiAcpi10TableGuid;
 
 // Protocols
+extern EFI_GUID gEfiLoadedImageProtocolGuid;
+extern EFI_GUID gEfiLoadFileProtocolGuid;
+extern EFI_GUID gEfiSimpleFileSystemProtocolGuid;
+extern EFI_GUID gEfiSimpleTextInProtocolGuid;
 extern EFI_GUID gEfiDevicePathProtocolGuid;
 extern EFI_GUID gEfiDebugPortProtocolGuid;
 extern EFI_GUID gEfiDriverBindingProtocolGuid;
 extern EFI_GUID gEfiSimpleTextOutProtocolGuid;
 extern EFI_GUID gEfiGraphicsOutputProtocolGuid;
 extern EFI_GUID gEfiHiiFontProtocolGuid;
-extern EFI_GUID gEfiSimpleFileSystemProtocolGuid;
 extern EFI_GUID gEfiUgaDrawProtocolGuid;
 extern EFI_GUID gEfiComponentNameProtocolGuid;
 extern EFI_GUID gEfiComponentName2ProtocolGuid;

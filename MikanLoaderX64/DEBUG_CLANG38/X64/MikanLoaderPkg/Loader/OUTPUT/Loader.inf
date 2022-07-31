@@ -20,6 +20,15 @@
 [PatchPcd.X64]
 
 [Protocols.X64]
+  gEfiLoadedImageProtocolGuid
+
+  gEfiLoadFileProtocolGuid
+
+  ## SOMETIMES_CONSUMES
+  gEfiSimpleFileSystemProtocolGuid
+
+  gEfiSimpleTextInProtocolGuid
+
   ## SOMETIMES_CONSUMES
   gEfiDevicePathProtocolGuid
 
@@ -37,9 +46,6 @@
 
   ## SOMETIMES_CONSUMES
   gEfiHiiFontProtocolGuid
-
-  ## SOMETIMES_CONSUMES
-  gEfiSimpleFileSystemProtocolGuid
 
   ## SOMETIMES_CONSUMES # Consumes if gEfiGraphicsOutputProtocolGuid uninstalled
   gEfiUgaDrawProtocolGuid

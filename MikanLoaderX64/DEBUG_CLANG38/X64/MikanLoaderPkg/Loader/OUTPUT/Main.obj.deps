@@ -39,6 +39,11 @@
   /home/isugyun/edk2/MdePkg/Include/Protocol/DriverDiagnostics2.h \
   /home/isugyun/edk2/MdePkg/Include/Protocol/GraphicsOutput.h \
   /home/isugyun/edk2/MdePkg/Include/Protocol/SimpleFileSystem.h \
-  /home/isugyun/edk2/MdePkg/Include/Library/BaseLib.h
+  /home/isugyun/edk2/MdePkg/Include/Library/BaseLib.h \
+  /home/isugyun/edk2/MdePkg/Include/Library/UefiBootServicesTableLib.h \
+  /home/isugyun/edk2/MdePkg/Include/Library/PrintLib.h \
+  /home/isugyun/edk2/MdePkg/Include/Protocol/LoadedImage.h \
+  /home/isugyun/edk2/MdePkg/Include/Protocol/DiskIo2.h \
+  /home/isugyun/edk2/MdePkg/Include/Protocol/BlockIo.h
 
 # Updated 
