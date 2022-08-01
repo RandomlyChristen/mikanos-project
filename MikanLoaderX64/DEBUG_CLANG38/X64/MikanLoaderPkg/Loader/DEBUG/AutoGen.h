@@ -25,6 +25,7 @@ extern CHAR8 *gEfiCallerBaseName;
   {0xd3f11f4e, 0x71e9, 0x11e8, {0xa7, 0xe1, 0x33, 0xfd, 0x4f, 0x7d, 0x5a, 0x3e}}
 
 // Guids
+extern EFI_GUID gEfiFileInfoGuid;
 extern EFI_GUID gEfiMdePkgTokenSpaceGuid;
 extern EFI_GUID gEfiVTUTF8Guid;
 extern EFI_GUID gEfiVT100Guid;
@@ -46,7 +47,6 @@ extern EFI_GUID gEfiAcpi10TableGuid;
 extern EFI_GUID gEfiLoadedImageProtocolGuid;
 extern EFI_GUID gEfiLoadFileProtocolGuid;
 extern EFI_GUID gEfiSimpleFileSystemProtocolGuid;
-extern EFI_GUID gEfiSimpleTextInProtocolGuid;
 extern EFI_GUID gEfiDevicePathProtocolGuid;
 extern EFI_GUID gEfiDebugPortProtocolGuid;
 extern EFI_GUID gEfiDriverBindingProtocolGuid;

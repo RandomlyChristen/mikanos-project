@@ -27,8 +27,6 @@
   ## SOMETIMES_CONSUMES
   gEfiSimpleFileSystemProtocolGuid
 
-  gEfiSimpleTextInProtocolGuid
-
   ## SOMETIMES_CONSUMES
   gEfiDevicePathProtocolGuid
 
@@ -72,6 +70,8 @@
 [Ppis.X64]
 
 [Guids.X64]
+  gEfiFileInfoGuid
+
   ## SOMETIMES_CONSUMES  ## GUID
   gEfiVTUTF8Guid
 

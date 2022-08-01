@@ -1,6 +1,7 @@
 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MikanLoaderPkg/Loader/DEBUG/AutoGen.c
 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MikanLoaderPkg/Loader/DEBUG/AutoGen.h
 /home/isugyun/edk2/MdePkg/Include/Base.h
+/home/isugyun/edk2/MdePkg/Include/Guid/FileInfo.h
 /home/isugyun/edk2/MdePkg/Include/Guid/HiiFormMapMethodGuid.h
 /home/isugyun/edk2/MdePkg/Include/Guid/PcAnsi.h
 /home/isugyun/edk2/MdePkg/Include/Guid/WinCertificate.h

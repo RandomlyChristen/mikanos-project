@@ -221,14 +221,14 @@ Archive member included to satisfy reference by file (symbol)
 
 Discarded input sections
 
- .text          0x0000000000000000        0x0 /tmp/lto-llvm-4abacc.o
+ .text          0x0000000000000000        0x0 /tmp/lto-llvm-74ec12.o
  .text.InternalAssertJumpBuffer
-                0x0000000000000000        0x1 /tmp/lto-llvm-4abacc.o
+                0x0000000000000000        0x1 /tmp/lto-llvm-74ec12.o
  .rodata._gPcd_FixedAtBuild_PcdControlFlowEnforcementPropertyMask
-                0x0000000000000000        0x4 /tmp/lto-llvm-4abacc.o
- .comment       0x0000000000000000     0x1723 /tmp/lto-llvm-4abacc.o
+                0x0000000000000000        0x4 /tmp/lto-llvm-74ec12.o
+ .comment       0x0000000000000000     0x1723 /tmp/lto-llvm-74ec12.o
  .note.GNU-stack
-                0x0000000000000000        0x0 /tmp/lto-llvm-4abacc.o
+                0x0000000000000000        0x0 /tmp/lto-llvm-74ec12.o
  .text          0x0000000000000000      0x204 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
  .data          0x0000000000000000        0xa /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
  .text          0x0000000000000000       0x2f /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(CpuIdEx.obj)
@@ -253,7 +253,7 @@ Name             Origin             Length             Attributes
 
 Linker script and memory map
 
-LOAD /tmp/lto-llvm-4abacc.o
+LOAD /tmp/lto-llvm-74ec12.o
 START GROUP
 LOAD /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MikanLoaderPkg/Loader/OUTPUT/Loader.lib
 LOAD /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseMemoryLib/BaseMemoryLib/OUTPUT/BaseMemoryLib.lib
@@ -271,91 +271,94 @@ END GROUP
                 0x0000000000000228                PECOFF_HEADER_SIZE = 0x228
                 0x0000000000000228                . = PECOFF_HEADER_SIZE
 
-.text           0x0000000000000240     0x1b86
+.text           0x0000000000000240     0x1ed6
  *(.text .text.* .stub .gnu.linkonce.t.*)
+ .text.GetMemoryMap
+                0x0000000000000240       0x43 /tmp/lto-llvm-74ec12.o
  .text.UefiMain
-                0x0000000000000240      0x214 /tmp/lto-llvm-4abacc.o
+                0x0000000000000283      0x3d8 /tmp/lto-llvm-74ec12.o
  .text.BasePrintLibSPrintMarker
-                0x0000000000000454      0xf39 /tmp/lto-llvm-4abacc.o
+                0x000000000000065b      0xf39 /tmp/lto-llvm-74ec12.o
  .text.BasePrintLibSPrint
-                0x000000000000138d       0x23 /tmp/lto-llvm-4abacc.o
+                0x0000000000001594       0x23 /tmp/lto-llvm-74ec12.o
  .text.AsciiSPrint
-                0x00000000000013b0       0x2f /tmp/lto-llvm-4abacc.o
- .text.Print    0x00000000000013df       0xa5 /tmp/lto-llvm-4abacc.o
+                0x00000000000015b7       0x2f /tmp/lto-llvm-74ec12.o
+ .text.Print    0x00000000000015e6       0xa5 /tmp/lto-llvm-74ec12.o
  .text._ModuleEntryPoint
-                0x0000000000001484       0x31 /tmp/lto-llvm-4abacc.o
-                0x0000000000001484                _ModuleEntryPoint
+                0x000000000000168b       0x31 /tmp/lto-llvm-74ec12.o
+                0x000000000000168b                _ModuleEntryPoint
  *(.rodata .rodata.* .gnu.linkonce.r.*)
- *fill*         0x00000000000014b5        0x3 
  .rodata.BasePrintLibSPrintMarker
-                0x00000000000014b8       0xec /tmp/lto-llvm-4abacc.o
+                0x00000000000016bc       0xec /tmp/lto-llvm-74ec12.o
  .rodata.str2.2
-                0x00000000000015a4      0x3e2 /tmp/lto-llvm-4abacc.o
+                0x00000000000017a8      0x52c /tmp/lto-llvm-74ec12.o
  .rodata.str1.1
-                0x0000000000001986       0xd5 /tmp/lto-llvm-4abacc.o
- *fill*         0x0000000000001a5b        0x5 
- .rodata.cst16  0x0000000000001a60       0x10 /tmp/lto-llvm-4abacc.o
+                0x0000000000001cd4       0xd5 /tmp/lto-llvm-74ec12.o
+ *fill*         0x0000000000001da9        0x7 
+ .rodata.cst16  0x0000000000001db0       0x10 /tmp/lto-llvm-74ec12.o
  .rodata.mErrorString
-                0x0000000000001a70      0x2b5 /tmp/lto-llvm-4abacc.o
- *fill*         0x0000000000001d25        0xb 
+                0x0000000000001dc0      0x2b5 /tmp/lto-llvm-74ec12.o
+ *fill*         0x0000000000002075        0xb 
  .rodata.mWarningString
-                0x0000000000001d30       0x96 /tmp/lto-llvm-4abacc.o
+                0x0000000000002080       0x96 /tmp/lto-llvm-74ec12.o
  *(.got .got.*)
- .got           0x0000000000001dc6        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
- .got.plt       0x0000000000001dc6        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
+ .got           0x0000000000002116        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
+ .got.plt       0x0000000000002116        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
  *:AutoGen.obj(.data.g*Guid)
 
-.plt            0x0000000000001dd0        0x0
- .plt           0x0000000000001dd0        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
+.plt            0x0000000000002120        0x0
+ .plt           0x0000000000002120        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
 
-.plt.got        0x0000000000001dc8        0x0
- .plt.got       0x0000000000001dc8        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
+.plt.got        0x0000000000002118        0x0
+ .plt.got       0x0000000000002118        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
 
-.data           0x0000000000001e00       0xc0
+.data           0x0000000000002140       0xd0
  *(.data .data.* .gnu.linkonce.d.*)
  .data.rel.ro..Lswitch.table.GetMemoryTypeUnicode
-                0x0000000000001e00       0x80 /tmp/lto-llvm-4abacc.o
+                0x0000000000002140       0x80 /tmp/lto-llvm-74ec12.o
+ .data.gEfiFileInfoGuid
+                0x00000000000021c0       0x10 /tmp/lto-llvm-74ec12.o
  .data.gEfiLoadedImageProtocolGuid
-                0x0000000000001e80       0x10 /tmp/lto-llvm-4abacc.o
+                0x00000000000021d0       0x10 /tmp/lto-llvm-74ec12.o
  .data.gEfiSimpleFileSystemProtocolGuid
-                0x0000000000001e90       0x10 /tmp/lto-llvm-4abacc.o
- .data.rel.ro   0x0000000000001ea0        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
+                0x00000000000021e0       0x10 /tmp/lto-llvm-74ec12.o
+ .data.rel.ro   0x00000000000021f0        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
  *(.bss .bss.*)
  .bss.gImageHandle
-                0x0000000000001ea0        0x8 /tmp/lto-llvm-4abacc.o
- .bss.gST       0x0000000000001ea8        0x8 /tmp/lto-llvm-4abacc.o
- .bss.gBS       0x0000000000001eb0        0x8 /tmp/lto-llvm-4abacc.o
- .bss.gRT       0x0000000000001eb8        0x8 /tmp/lto-llvm-4abacc.o
+                0x00000000000021f0        0x8 /tmp/lto-llvm-74ec12.o
+ .bss.gST       0x00000000000021f8        0x8 /tmp/lto-llvm-74ec12.o
+ .bss.gBS       0x0000000000002200        0x8 /tmp/lto-llvm-74ec12.o
+ .bss.gRT       0x0000000000002208        0x8 /tmp/lto-llvm-74ec12.o
 
-.eh_frame       0x0000000000001ec0        0x0
+.eh_frame       0x0000000000002240        0x0
  *(.eh_frame)
- .eh_frame      0x0000000000001ec0        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
- .eh_frame      0x0000000000001ec0        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
+ .eh_frame      0x0000000000002240        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
+ .eh_frame      0x0000000000002240        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
 
-.dynbss         0x0000000000001ec0        0x0
- .dynbss        0x0000000000001ec0        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
+.dynbss         0x0000000000002240        0x0
+ .dynbss        0x0000000000002240        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
 
-.gnu.version_d  0x0000000000001ec0        0x0
+.gnu.version_d  0x0000000000002240        0x0
  .gnu.version_d
-                0x0000000000001ec0        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
+                0x0000000000002240        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
 
-.gnu.version    0x0000000000001ec0        0x0
- .gnu.version   0x0000000000001ec0        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
+.gnu.version    0x0000000000002240        0x0
+ .gnu.version   0x0000000000002240        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
 
-.gnu.version_r  0x0000000000001ec0        0x0
+.gnu.version_r  0x0000000000002240        0x0
  .gnu.version_r
-                0x0000000000001ec0        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
+                0x0000000000002240        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
 
-.rela           0x0000000000001ec0      0x180
+.rela           0x0000000000002240      0x180
  *(.rela .rela.*)
- .rela.plt      0x0000000000001ec0        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
- .rela.got      0x0000000000001ec0        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
- .rela.bss      0x0000000000001ec0        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
+ .rela.plt      0x0000000000002240        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
+ .rela.got      0x0000000000002240        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
+ .rela.bss      0x0000000000002240        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
  .rela.data.rel.ro
-                0x0000000000001ec0        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
- .rela.ifunc    0x0000000000001ec0        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
+                0x0000000000002240        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
+ .rela.ifunc    0x0000000000002240        0x0 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
  .rela.data.rel.ro..Lswitch.table.GetMemoryTypeUnicode
-                0x0000000000001ec0      0x180 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
+                0x0000000000002240      0x180 /home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/BaseLib/BaseLib/OUTPUT/BaseLib.lib(Thunk16.obj)
 
 .hii
  *(.hii)
@@ -375,38 +378,38 @@ END GROUP
  *(COMMON)
 OUTPUT(/home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MikanLoaderPkg/Loader/DEBUG/Loader.dll elf64-x86-64)
 
-.debug_str      0x0000000000000000     0x48b5
- .debug_str     0x0000000000000000     0x48b5 /tmp/lto-llvm-4abacc.o
-                                       0x4bcd (size before relaxing)
+.debug_str      0x0000000000000000     0x4969
+ .debug_str     0x0000000000000000     0x4969 /tmp/lto-llvm-74ec12.o
+                                       0x4ca8 (size before relaxing)
 
-.debug_loc      0x0000000000000000     0x2395
- .debug_loc     0x0000000000000000     0x2395 /tmp/lto-llvm-4abacc.o
+.debug_loc      0x0000000000000000     0x25b7
+ .debug_loc     0x0000000000000000     0x25b7 /tmp/lto-llvm-74ec12.o
 
-.debug_abbrev   0x0000000000000000      0x55a
- .debug_abbrev  0x0000000000000000      0x55a /tmp/lto-llvm-4abacc.o
+.debug_abbrev   0x0000000000000000      0x595
+ .debug_abbrev  0x0000000000000000      0x595 /tmp/lto-llvm-74ec12.o
 
-.debug_info     0x0000000000000000     0xa654
- .debug_info    0x0000000000000000     0xa654 /tmp/lto-llvm-4abacc.o
+.debug_info     0x0000000000000000     0xa794
+ .debug_info    0x0000000000000000     0xa794 /tmp/lto-llvm-74ec12.o
 
-.debug_ranges   0x0000000000000000      0x240
- .debug_ranges  0x0000000000000000      0x240 /tmp/lto-llvm-4abacc.o
+.debug_ranges   0x0000000000000000      0x270
+ .debug_ranges  0x0000000000000000      0x270 /tmp/lto-llvm-74ec12.o
 
 .debug_macinfo  0x0000000000000000        0x1
  .debug_macinfo
-                0x0000000000000000        0x1 /tmp/lto-llvm-4abacc.o
+                0x0000000000000000        0x1 /tmp/lto-llvm-74ec12.o
 
 .debug_pubnames
-                0x0000000000000000     0x10a5
+                0x0000000000000000     0x1099
  .debug_pubnames
-                0x0000000000000000     0x10a5 /tmp/lto-llvm-4abacc.o
+                0x0000000000000000     0x1099 /tmp/lto-llvm-74ec12.o
 
 .debug_pubtypes
-                0x0000000000000000     0x45d7
+                0x0000000000000000     0x45ff
  .debug_pubtypes
-                0x0000000000000000     0x45d7 /tmp/lto-llvm-4abacc.o
+                0x0000000000000000     0x45ff /tmp/lto-llvm-74ec12.o
 
 .debug_frame    0x0000000000000000      0x238
- .debug_frame   0x0000000000000000      0x238 /tmp/lto-llvm-4abacc.o
+ .debug_frame   0x0000000000000000      0x238 /tmp/lto-llvm-74ec12.o
 
-.debug_line     0x0000000000000000     0x2f97
- .debug_line    0x0000000000000000     0x2f97 /tmp/lto-llvm-4abacc.o
+.debug_line     0x0000000000000000     0x3097
+ .debug_line    0x0000000000000000     0x3097 /tmp/lto-llvm-74ec12.o
