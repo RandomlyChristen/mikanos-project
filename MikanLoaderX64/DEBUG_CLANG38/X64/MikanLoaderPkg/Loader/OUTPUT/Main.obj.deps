@@ -46,6 +46,7 @@
   /home/isugyun/edk2/MdePkg/Include/Protocol/LoadedImage.h \
   /home/isugyun/edk2/MdePkg/Include/Protocol/DiskIo2.h \
   /home/isugyun/edk2/MdePkg/Include/Protocol/BlockIo.h \
-  /home/isugyun/edk2/MdePkg/Include/Guid/FileInfo.h
+  /home/isugyun/edk2/MdePkg/Include/Guid/FileInfo.h \
+  /home/isugyun/edk2/MikanLoaderPkg/frame_buffer_config.hpp
 
 # Updated 
