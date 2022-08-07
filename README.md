@@ -1,159 +1,179 @@
 # MikanOS project
-## Day 4A~B, Make와 픽셀 그리기 입문
+## Day 4C~D, 커널 픽셀 그리기 모듈화 및 부트로더 개량
 <br>
 
 ### 주요 개발 사항
-1. 커널이 프레임 버퍼에 대한 정보를 구조체로 받아오도록 수정
-2. 커널 픽셀을 표현하는 순서가 RGB 또는 BGR일 때, 각각 1개의 픽셀을 그리는 함수작성
-3. 부트로더가 커널을 호출할 때 프레임 버퍼에 대한 정보를 담은 구조체를 전달하도록 수정
-4. 커널 빌드를 make를 사용하여 자동화
+1. C++를 활용해 객체지향적으로 PixelWriter 작성
+2. 커널 실행 파일 ELF에서 파일에서는 0크기의 할당되지 않는 영역(.bss)의 처리
 
 <br>
 
 ### 핵심 동작 원리
-1. 픽셀 표현방법
-   - UEFI GOP로부터 가능한 픽셀의 표현방법(pixel format)은 여러가지가 있음
-     - `PixelBitMask`와 `PixelBltOnly`는 다루지 않음
-     - `PixelRedGreenBlueReserved8bitPerColor`와 `PixelBlueGreenRedReserved8bitPerColor`는 각 픽셀이 4bytes를 점유 
-       - `R(8bits)-G(8bits)-B(8bits)-Res(8bits)` 32bits = 1byte
-       - `B(8bits)-G(8bits)-R(8bits)-Res(8bits)` 32bits = 1byte
-   - 픽셀 표현방법에 따라 분기하여 픽셀을 그리는 함수 `WritePixel`를 구성가능
-     - 디스플레이의 rows와 cols를 이용해 byte array에서 해당 픽셀의 원소특정(`pixel_position`)
+1. `PixelWriter` 클래스와 그 자식클래스의 정의
+   - `PixelWriter*`타입의 글로벌 변수 정의
+   - `KernelMain`에서 부트로더로부터 전달받은 `FrameBufferConfig`의 `pixel_format`에 따라 서로 다른 자식 클래스 오브젝트 생성
+     - `kPixelRGBResv8BitPerColor`인 경우 `class RGBResv8BitPerColorPixelWriter : public PixelWriter`
+     - `kPixelBGRResv8BitPerColor`인 경우 `class BGRResv8BitPerColorPixelWriter : public PixelWriter`
+     - 각각의 자식 클래스는 `virtual`메소드인 `Write`를 오버라이딩하고 있음
+       - 즉, 상기의 각각의 경우에 서로다른 vtable이 주어짐
+   - displacement `new`와 `delete`
+     - `new`는 일반적인 시스템에서 해당 C++코드가 커널서비스를 통해 힙 영역에 동적할당하도록 설계되어있음
+     - 하지만, 커널 빌드에서는 시스템이 동적할당 서비스를 제공하고 있지 않음
+     - displacement `new`를 통해 명시된 영역에 (이번에서는 글로벌 변수 `pixel_writer_buf`) 오브젝트를 할당
+       - `pixel_writer_buf`는 타입의 크기만큼 여유를 가져야함
+       - `sizeof`는 vtable을 포함한 클래스의 크기를 알려줌
 
-```c
-int WritePixel(const FrameBufferConfig& config, int x, int y, const PixelColor& c) {
-    const int pixel_position = config.pixels_per_scan_line * y + x;
-    if (config.pixel_format == kPixelRGBResv8BitPerColor) {
-        uint8_t* p = &(config.frame_buffer[4 * pixel_position]);
-        p[0] = c.r;
-        p[1] = c.g;
-        p[2] = c.b;
-    }
-    else if (config.pixel_format == kPixelBGRResv8BitPerColor) {
-        uint8_t* p = &(config.frame_buffer[4 * pixel_position]);
-        p[0] = c.b;
-        p[1] = c.g;
-        p[2] = c.r;
-    }
-    else {
-        return -1;
-    }
-    return 0;
+```cpp
+class PixelWriter {
+public:
+...
+  virtual void Write(int x, int y, const PixelColor& c) = 0;
+...
+};
+
+class RGBResv8BitPerColorPixelWriter : public PixelWriter {
+...
+  virtual void Write(int x, int y, const PixelColor& c) override {
+    auto p = PixelAt(x, y);
+    p[0] = c.r;
+    p[1] = c.g;
+    p[2] = c.b;
+  }
+};
+
+class BGRResv8BitPerColorPixelWriter : public PixelWriter {
+...
+  virtual void Write(int x, int y, const PixelColor& c) override {
+    auto p = PixelAt(x, y);
+    p[0] = c.b;
+    p[1] = c.g;
+    p[2] = c.r;
+  }
+};
+
+...
+// 메인에서
+switch (frame_buffer_config.pixel_format) {
+  case kPixelBGRResv8BitPerColor:
+    pixel_writer = new(pixel_writer_buf)
+      BGRResv8BitPerColorPixelWriter(frame_buffer_config);
+    break;
+  case kPixelRGBResv8BitPerColor:
+    pixel_writer = new(pixel_writer_buf)
+      RGBResv8BitPerColorPixelWriter(frame_buffer_config);
+    break;
 }
 ```
 
 <br>
 
-2. 커널이 받는 프레임 버퍼 정보를 구조체 타입 사용
-   - 커널과 부트로더의 코드가 `frame_buffer_config.hpp`를 공유
-   - 부트로더에서 `FrameBufferConfig`를 초기화하고 포인터 타입으로 전달
-   - 포인터 타입으로 전달된 인수는 `System V AMD64 ABI Calling Convention`에 의거하여 레퍼런스 타입 인자로 받을 수 있음 (ptr arg -> ref param OK)
-     - 해당 ABI를 따르는 컴파일러의 호출 규약은 첫번째로 인수 값을 `%rdi`를 통해 전달하는것으로 확인
-     - `main.o`를 디스어셈블 해보면 `0x10(%rdi)`에 위치한 값을 0과 비교해보고 있음
-     - `%rdi`는 `frame_buffer_config`를 담고있는 것으로 유추할 수 있음, 즉 주소값으로 전달됨
-     - 이는 `FrameBufferConfig`의 `pixel_format`이며 이 값이 0이면 `kPixelRGBResv8BitPerColor`인 것
-     - 다만 최적화로 인해 `WritePixel`을 호출하는 부분이 inline으로 치환된 것으로 보임
+2. `elf.hpp`를 활용하여 ELF파일을 분석하여 커널 영역 할당
+   - 이전의 방식은 읽어온 ELF파일을 그대로 베이스 주소에 쓰는 방식으로 로드함
+     - 이 방식에서 실제 Readable 또는 Executable 세그먼트들이 그대로 파일로부터 불러짐
+   - 하지만 Readable & Writable 섹션인 `.bss`는 파일에서의 크기가 0이고 메모리상에서만 크기를 가짐
+     - 즉 파일을 그대로 로드하면 이 영역의 사용은 할당되지 않은 영역이거나 다른 영역을 침범하는 행위가 됨
+   - 파일을 `kernel_buffer`로 읽고, 이것을 `Elf64_Ehdr*`에 대입하여 ELF구조체로 활용
+     - `Elf64_Phdr`로부터 `PT_LOAD`세그먼트들의 가상 시작주소와 끝주소를 알아내는 `CalcLoadAddressRange`구현
+       - 여기서 알아낸 가상주소 범위는 실제 세그먼트들이 필요로하는 주소범위의 크기와 같은 것
+     - 위에서 알아낸 시작주소와 끝주소를 이용해 메모리 공간(`gBS->AllocatePages`)을 할당
+     - 할당받은 공간에 `PT_LOAD`세그먼트들을 복사하면서, 추가적으로 필요한 공간을 0으로 초기화하는 `CopyLoadSegments`구현
      
 
 ```
-$ objdump -D main.o
-...중략
-0000000000000060 <KernelMain>:
-  60:	55                   	push   %rbp
-  61:	48 89 e5             	mov    %rsp,%rbp
-  64:	83 7f 10 00          	cmpl   $0x0,0x10(%rdi)
-  68:	74 5b                	je     c5 <KernelMain+0x65>
-...
+$ readelf -l kernel.elf 
+
+Elf file type is EXEC (Executable file)
+Entry point 0x101020
+There are 5 program headers, starting at offset 64
+
+Program Headers:
+  Type           Offset             VirtAddr           PhysAddr
+                 FileSiz            MemSiz              Flags  Align
+  PHDR           0x0000000000000040 0x0000000000100040 0x0000000000100040
+                 0x0000000000000118 0x0000000000000118  R      0x8
+  LOAD           0x0000000000000000 0x0000000000100000 0x0000000000100000
+                 0x00000000000001a8 0x00000000000001a8  R      0x1000
+  LOAD           0x0000000000001000 0x0000000000101000 0x0000000000101000
+                 0x00000000000001b9 0x00000000000001b9  R E    0x1000
+  LOAD           0x0000000000002000 0x0000000000102000 0x0000000000102000
+                 0x0000000000000000 0x0000000000000018  RW     0x1000
+  GNU_STACK      0x0000000000000000 0x0000000000000000 0x0000000000000000
+                 0x0000000000000000 0x0000000000000000  RW     0x0
+
+ Section to Segment mapping:
+  Segment Sections...
+   00     
+   01     .rodata 
+   02     .text 
+   03     .bss 
+   04     
+
 ```
 
-```cpp
-// 커널에서
-extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {...}
-```
 ```c
-// 부트로더에서
-struct FrameBufferConfig fb_config = {
-  (UINT8*)gop->Mode->FrameBufferBase,
-  gop->Mode->Info->PixelsPerScanLine,
-  gop->Mode->Info->HorizontalResolution,
-  gop->Mode->Info->VerticalResolution,
-  0
-};
-...중략
-switch (gop->Mode->Info->PixelFormat) {
-  case PixelRedGreenBlueReserved8BitPerColor:
-    fb_config.pixel_format = kPixelRGBResv8BitPerColor;
-    break;
-  case PixelBlueGreenRedReserved8BitPerColor:
-    fb_config.pixel_format = kPixelBGRResv8BitPerColor;
-    break;
-  default:
-    Print(L"Unimplemented pixel format: %d\n", gop->Mode->Info->PixelFormat);
-    Halt();
+void CalcLoadAddressRange(Elf64_Ehdr* ehdr, UINT64* first, UINT64* last) {
+  Elf64_Phdr* phdr = (Elf64_Phdr*)((UINT64)ehdr + ehdr->e_phoff);
+  *first = MAX_INT64;
+  *last = 0;
+  for (Elf64_Half i = 0; i < ehdr->e_phnum; ++i) {
+    if (phdr[i].p_type != PT_LOAD) continue;
+    *first = MIN(*first, phdr[i].p_vaddr);
+    *last = MAX(*last, phdr[i].p_vaddr + phdr[i].p_memsz);
+  }
 }
-...중략
-UINT64 entry_addr = *(UINT64*)(kernel_base_addr + 24);
 
-typedef void EntryPointType(const struct FrameBufferConfig*);
-EntryPointType* entry_point = (EntryPointType*)entry_addr;
-entry_point(&fb_config);
+void CopyLoadSegments(Elf64_Ehdr* ehdr) {
+  Elf64_Phdr* phdr = (Elf64_Phdr*)((UINT64)ehdr + ehdr->e_phoff);
+  for (Elf64_Half i = 0; i < ehdr->e_phnum; ++i) {
+    if (phdr[i].p_type != PT_LOAD) continue;
+
+    UINT64 segm_in_file = (UINT64)ehdr + phdr[i].p_offset;
+    CopyMem((VOID*)phdr[i].p_vaddr, (VOID*)segm_in_file, phdr[i].p_filesz);
+
+    UINTN remain_bytes = phdr[i].p_memsz - phdr[i].p_filesz;
+    SetMem((VOID*)(phdr[i].p_vaddr + phdr[i].p_filesz), remain_bytes, 0);
+  }
+}
 ...
+// 메인에서
+VOID* kernel_buffer;
+status = gBS->AllocatePool(EfiLoaderData, kernel_file_size, &kernel_buffer);  // 버퍼 공간 할당
+...
+status = kernel_file->Read(kernel_file, &kernel_file_size, kernel_buffer);  // ELF파일을 그대로 읽기
+...
+Elf64_Ehdr* kernel_ehdr = (Elf64_Ehdr*)kernel_buffer;  // 파일을 구조체에 대입
+UINT64 kernel_first_addr, kernel_last_addr;
+CalcLoadAddressRange(kernel_ehdr, &kernel_first_addr, &kernel_last_addr);  // LOAD세그먼트 시작, 끝 주소 알아내기
+
+UINTN num_pages = (kernel_last_addr - kernel_first_addr + 0xfff) / 0x1000;
+status = gBS->AllocatePages(AllocateAddress, EfiLoaderData, num_pages, &kernel_first_addr);  // 실제 커널 로드 공간 할당
+
+CopyLoadSegments(kernel_ehdr);  // 세그먼트 복사 및 추가공간 0 초기화
+...
+UINT64 entry_addr = *(UINT64*)(kernel_first_addr + 24);  // 첫번째 LOAD세그먼트의 가상 주소 시작점은 베이스 주소와 같음
 ```
 
 <br>
 
 ### 주요 동작
-`frame_buffer_config.hpp`는 커널과 부트로더가 공유해야하는 부분이다. 부트로더는 C로 작성되었고, 아마 C로 컴파일 될 것이기 때문에 `hpp`와 C++문법을 사용하면 안되는 것 같지만 확실하지 않아서 책의 내용을 따랐다. 물론 양측에서 호환되는 문법만이 사용되고 있다. 이것을 심볼릭 링크로 부트로더 패키지에도 포함시킨다.
+`kernel/elf.hpp`는 이전에 `frame_buffer_config.hpp`와 같이 부드로더가 참조할 수 있게 심볼릭 링크로 구성해줘야한다.
 
 ```
-$ ln -sf ../kernel/frame_buffer_config.hpp /home/isugyun/make-os/MikanLoaderPkg/
+$ ln -sf ../kernel/elf.hpp /home/isugyun/make-os/MikanLoaderPkg/
 ```
 
-커널빌드는 이제 `Makefile`를 작성하여 자동화 하였다. include와 linkable lib path 및 컴파일, 링킹 옵션을 포함하고 있다.
+커널과 부드로더를 다시 빌드하여 실행할 수 있다.
 
-```
-TARGET = kernel.elf
-OBJS = main.o
-
-DEVENV_DIR = $(HOME)/make-os/devenv
-EDK_DIR = $(HOME)/edk2
-
-INCS += -I$(DEVENV_DIR)/x86_64-elf/include/c++/v1 \
-	-I$(DEVENV_DIR)/x86_64-elf/include \
-	-I$(DEVENV_DIR)/x86_64-elf/include/freetype2 \
-	-I$(EDK_DIR)/MdePkg/Include \
-	-I$(EDK_DIR)/MdePkg/Include/X64
-
-LIBS += -L$(DEVENV_DIR)/x86_64-elf/lib
-
-CXXFLAGS += -nostdlibinc -D__ELF__ -D_LDBL_EQ_DBL -D_GNU_SOURCE -D_POSIX_TIMERS \
-	-DEFIAPI='__attribute__((ms_abi))' \
-	-O2 -Wall -g --target=x86_64-elf -ffreestanding -mno-red-zone -fno-exceptions -fno-rtti -std=c++17
-
-LDFLAGS += --entry KernelMain -z norelro --image-base 0x100000 --static
-
-.PHONY: all
-all: $(TARGET)
-
-.PHONY: clean
-clean:
-		rm -rf *.o
-
-kernel.elf: $(OBJS) Makefile
-		ld.lld $(LDFLAGS) $(LIBS) -o kernel.elf $(OBJS)
-
-%.o: %.cpp Makefile
-		clang++ $(CXXFLAGS) $(INCS) -c $<
-
-```
 ```
 $ make
 ```
 
-부트로더를 빌드하고 변경사항이 적용된 커널 바이너리를 부팅 디스크에 올려 실행한다.
 ```
 $ ./devenv/loader_edkbuild.sh ./MikanLoaderPkg/ ./
 $ ./devenv/run_qemu.sh ./MikanLoaderX64/DEBUG_CLANG38/X64/Loader.efi ./kernel/kernel.elf
 ```
 
-![주요 동작-1](./img/4A~B-1.png)
+- 커널 로드 전
+  ![주요 동작-1](./img/4C~D-1.png)
+- 커널 로드 후
+  ![주요 동작-2](./img/4C~D-2.png)
