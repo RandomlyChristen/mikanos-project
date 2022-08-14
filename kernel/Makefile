@@ -1,5 +1,6 @@
 TARGET = kernel.elf
-OBJS = main.o
+OBJS = main.o graphics.o font.o
+DEPENDS = $(join $(dir $(OBJS)),$(addprefix .,$(notdir $(OBJS:.o=.d))))
 
 DEVENV_DIR = $(HOME)/make-os/devenv
 EDK_DIR = $(HOME)/edk2
@@ -23,10 +24,22 @@ all: $(TARGET)
 
 .PHONY: clean
 clean:
-		rm -rf *.o
+	rm -rf *.o
+	rm -rf *.d
 
 kernel.elf: $(OBJS) Makefile
-		ld.lld $(LDFLAGS) $(LIBS) -o kernel.elf $(OBJS)
+	ld.lld $(LDFLAGS) $(LIBS) -o kernel.elf $(OBJS)
 
 %.o: %.cpp Makefile
-		clang++ $(CXXFLAGS) $(INCS) -c $<
+	clang++ $(CXXFLAGS) $(INCS) -c $<
+
+.%.d: %.cpp
+	clang++ $(CXXFLAGS) $(INCS) -MM $< > $@
+	$(eval OBJ = $(<:.cpp=.o))
+	sed --in-place 's|$(notdir $(OBJ))|$(OBJ)|' $@
+
+.PHONY: depends
+depends:
+	$(MAKE) $(DEPENDS)
+
+-include $(DEPENDS)
