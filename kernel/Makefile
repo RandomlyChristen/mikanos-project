@@ -1,5 +1,5 @@
 TARGET = kernel.elf
-OBJS = main.o graphics.o font.o cp1251/cp1251.o newlib_support.o
+OBJS = main.o graphics.o font.o cp1251/cp1251.o newlib_support.o console.o
 DEPENDS = $(join $(dir $(OBJS)),$(addprefix .,$(notdir $(OBJS:.o=.d))))
 
 DEVENV_DIR = $(HOME)/make-os/devenv
@@ -28,6 +28,7 @@ all: $(TARGET)
 clean:
 	rm -rf *.o
 	rm -rf *.d
+	rm -rf .*.d
 
 kernel.elf: $(OBJS) Makefile
 	ld.lld $(LDFLAGS) $(LIBS) -o kernel.elf $(OBJS) -lc
