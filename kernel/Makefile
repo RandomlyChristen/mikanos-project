@@ -1,5 +1,5 @@
 TARGET = kernel.elf
-OBJS = main.o graphics.o font.o cp1251/cp1251.o newlib_support.o console.o
+OBJS = main.o graphics.o font.o cp1251/cp1251.o newlib_support.o console.o pci.o asmfunc.o
 DEPENDS = $(join $(dir $(OBJS)),$(addprefix .,$(notdir $(OBJS:.o=.d))))
 
 DEVENV_DIR = $(HOME)/make-os/devenv
@@ -48,6 +48,9 @@ kernel.elf: $(OBJS) Makefile
 	clang $(CFLAGS) $(INCS) -MM $< > $@
 	$(eval OBJ = $(<:.c=.o))
 	sed --in-place 's|$(notdir $(OBJ))|$(OBJ)|' $@
+
+%.o: %.asm Makefile
+	nasm -f elf64 -o $@ $<
 
 cp1251.bin: cp1251/cp1251.txt
 	../tools/makefont.py -o $@ $<
