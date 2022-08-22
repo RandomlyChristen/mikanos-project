@@ -1,192 +1,144 @@
 # MikanOS project
-## Day 6A~B, 마우스 커서와 사각형 그리기 & PCI 장치 탐색
+## Day 6C, xHC 초기화와 USB드라이버를 이용한 마우스 폴링
 <br>
 
 ### 주요 개발 사항
-1. 개행 처리가 가능한 콘솔 클래스 개발
-2. PCI 장치를 재귀적으로 탐색하여 기록하는 `pci.cpp` 개발
+1. xHC 및 USB 드라이버를 프로젝트에 추가
+2. 마우스 클래스 작성
+3. PCI xHC USB 3.0 호스트 컨트롤러 디바이스의 MMIO 베이스 주소 탐색
+4. 찾은 xHC MMIO 베이스 주소를 이용해 xHC를 초기화
+5. xHC의 포트를 순회하며 USB 장치가 연결된 포트를 구성
+6. HID 마우스 옵저버(이벤트 리스너) 연결
+7. xHC에 축적된 이벤트를 무한루프에서 처리하여 이벤트 폴링
 
 <br>
 
 ### 핵심 동작 원리
-1. 마우스 포인터와 데스트탑 UI
-   - 마우스 포인터의 크기와 형태를 정의하고 픽셀 그리기를 통해 화면에 표시
-   - 데스크탑 UI 느낌을 쉽게 표현하기 위해 사각형 그리기 함수 구현
-     - 내부가 채워진 직사각형 그리기 함수 `FillRectangle`
-     - 1픽셀 크기의 테두리를 그리는 함수 `DrawRectangle`
+1. xHC와 기타 USB 장치 드라이버와 마우스 클래스 준비
+   - [저자가 준비한 장치 드라이버](https://github.com/uchan-nos/mikanos/tree/osbook_day06c/kernel/usb)를 준비
+     - 여기서 `libc++`를 사용하므로 `libcxx_support.cpp`에서 몇가지 지원사항 정의
+     - 특히, `new`와 `delete`부분을 주의해야함
+     - `extern "C" void __cxa_pure_virtual()` 역시 `main.cpp`에 정의함
+   - 마우스 커서의 화면표시와 좌표갱신을 추상화한 `MouseCursor`클래스 정의
+     - 움직일 때 기존의 마우스를 배경색으로 지우고 새로 그리는 동작
 
 ```cpp
 ...
-void FillRectangle(PixelWriter& writer, const Vector2D<int>& pos,
-        const Vector2D<int>& size, const PixelColor& c) {
-    for (int dy = 0; dy < size.y; ++dy) {
-        for (int dx = 0; dx < size.x; ++dx) {
-            writer.Write(pos.x + dx, pos.y + dy, c);
-        }
-    }
-}
+class MouseCursor {
+public:
+  MouseCursor(PixelWriter* writer, PixelColor erase_color, Vector2D<int> initial_pos);
+  void MoveRelative(Vector2D<int> displacement);
 
-void DrawRectangle(PixelWriter& writer, const Vector2D<int>& pos,
-        const Vector2D<int>& size, const PixelColor& c) {
-    for (int dy = 0; dy < size.y; ++dy) {
-        writer.Write(pos.x, pos.y + dy, c);
-        writer.Write(pos.x + size.x - 1, pos.y + dy, c);
-    }
-    for (int dx = 0; dx < size.x; ++dx) {
-        writer.Write(pos.x + dx, pos.y, c);
-        writer.Write(pos.x + dx, pos.y + size.y - 1, c);
-    }
-}
-...
-const int kMouseCursorWidth = 15;
-const int kMouseCursorHeight = 24;
-const char mouse_cursor_shape[kMouseCursorHeight][kMouseCursorWidth + 1] = {
-  "@              ",
-  "@@             ",
-  "@.@            ",
-  "@..@           ",
-  "@...@          ",
-  "@....@         ",
-  "@.....@        ",
-  "@......@       ",
-  "@.......@      ",
-  "@........@     ",
-  "@.........@    ",
-  "@..........@   ",
-  "@...........@  ",
-  "@............@ ",
-  "@......@@@@@@@@",
-  "@......@       ",
-  "@....@@.@      ",
-  "@...@ @.@      ",
-  "@..@   @.@     ",
-  "@.@    @.@     ",
-  "@@      @.@    ",
-  "@       @.@    ",
-  "         @.@   ",
-  "         @@@   ",
+private:
+  PixelWriter* pixel_writer_ = nullptr;
+  PixelColor erase_color_;
+  Vector2D<int> position_;
 };
 ...
-Vector2D<int> initial_mouse_pos{300, 300};
-for (int dy = 0; dy < kMouseCursorHeight; ++dy) {
-  for (int dx = 0; dx < kMouseCursorWidth; ++dx) {
-    if (mouse_cursor_shape[dy][dx] == '@') {
-      pixel_writer->Write(initial_mouse_pos.x + dx, initial_mouse_pos.y + dy, {0, 0, 0});
-    }
-    else if (mouse_cursor_shape[dy][dx] == '.') {
-      pixel_writer->Write(initial_mouse_pos.x + dx, initial_mouse_pos.y + dy, {255, 255, 255});
-    }
-  }
+void MouseCursor::MoveRelative(Vector2D<int> displacement) {
+  EraseMouseCursor(pixel_writer_, position_, erase_color_);
+  position_ += displacement;
+  DrawMouseCursor(pixel_writer_, position_);
 }
 ```
 
 <br>
 
-2. PCI 버스의 계층적 구조
-   - Peripheral Component Interconnect는 PC를 구성하는 다양한 컴포넌트와 시스템 사이의 인터페이스
-     - 우리는 USB 호스트 드라이버를 구성하여 최종적으로 마우스 및 키보드 입력을 받는 것을 목표로 함
-     - 여기서 USB 호스트 컨트롤러는 특별히 xHCI(USB 3.x)규격의 컨트롤러로 한정
-     - xHCI에서 PCI 디바이스인 xHC를 초기화할 필요가 있음
-   - PCI는 여러개의 버스와 디바이스들로 구성될 수 있음
-     - 각 버스와 디바이스에는 번호가 부여됨
-       - 디바이스는 시스템에 연결되어 상호작용하는 장치
-       - 버스는 해당 장치가 연결된 통신선
-     - 각 버스들은 부모 자식 관계가 있으며, [리눅스 커널](https://wiki.kldp.org/Translations/html/The_Linux_Kernel-KLDP/tlk6.html)에서는 업스트림 방향과 다운스트림 방향으로 칭함
-       - 상위 버스, 업스트림 방향, 프라이머리 버스
-       - 하위 버스, 다운스트림 방향, 세컨더리 버스
-     - 버스와 버스는 서로 PCI-PCI 브릿지로 연결되어 있으며 (하위 버스가 PCI버스가 아닐 수도 있음 이때는 PCI-XXX 브릿지라고 부름) 브릿지 역시 디바이스임
-     - 디바이스는 복수개의 펑션(기능)이 있음
-     - 펑션에는 클래스(종류)가 있음
+2. xHC 호스트 컨트롤러 디바이스와 MMIO 베이스 주소 취득
+   - xHC 호스트 컨트롤러는 PCI 클래스가 `0x0cu, 0x03u, 0x30u`임
+     - 이 동작을 좀 더 쉽게 사용하기 위해 `pci::ClassCode`와 `Match`메소드 정의
+   - xHC의 MMIO(메모리 맵 I/O) 베이스 주소는 xHC의 PCI 설정 공간에 있는 Base Address Register(BAR)에 있음
+     - MMIO 베이스 주소는 `BAR0`과 `BAR1`에 걸쳐 64비트 주소를 포함하고 있음
+     - 단, 이 부분을 읽은 값 중 [0~3번 비트](https://en.wikipedia.org/wiki/PCI_configuration_space)는 플래그 값임
+     - 따라서 이 하위 4개 비트를 비트마스크로 제거하여 사용
+   - 찾은 xHC의 MMIO 베이스 주소를 사용하여 `usb::xhci::Controller`의 객체를 생성
+     - `Initialize`메소드를 사용하여 초기화
+   - 호스트 컨트롤러에 연결된 포트(`usb::xhci::Port`)를 순회하며 포트 구성
 
-![핵심동작원리 2-1](https://wiki.kldp.org/Translations/html/The_Linux_Kernel-KLDP/image/img6-1.jpg)
-![핵심동작원리 2-2](https://wiki.kldp.org/Translations/html/The_Linux_Kernel-KLDP/image/img6-9.jpg)
+![핵심동작원리 2-1](./img/6C-1.png)
 
-3. PCI Configuration Space를 활용한 장치 탐색
-   - PCI는 CPU와 정보를 교환하기 위한 공유메모리를 가짐
-     - PCI I/O
-     - PCI Memory
-     - PCI Configuration
-   - 모든 PCI 장치는 PCI 설정 공간을 자신의 설정 정보를 표현하는 자료구조로 사용
-   - PCI 설정 공간은 디바이스(PCI 슬롯) 마다 각자 다른 곳에 위치하고 있지만, 설정 헤더에 있는 상태 레지스터, 설정 레지스터를 이용해 시스템과 상호작용할 수 있음
-     - CONFIG_ADDRESS register : `0x0CF8`
-     - CONFIG_DATA register : `0x0CFC`
-   - 사용자가 `CONFIG_ADDRESS`를 설정하면 `CONFIG_DATA`가 갱신되고, 표준에 따라 이를 해석하여 사용하는데, 아래와 같은 정보가 있을 수 있음
-     - Device ID
-     - Vendor ID
-     - Status
-     - Command
-     - Base Class
-     - Sub Class
-     - Interface
-     - 그 외...총 256bytes
-   - 실제로 존재하고 접근가능한 디바이스는 반드시 0번 펑션을 갖고, 이를 조회하면 Vendor ID가  `0xFFFF`가 아님
-     - 반면 접근할 수 없는 디바이스는 `0xFFFF`로 설정됨
-   - 비트마스킹으로 특정 버스, 디바이스, 펑션 번호와 256byte의 설정공간을 표현하는 32비트 레지스터의 오프셋을 설정하는 `MakeAddress`함수 구현
-   - 실제 레지스터에 값을 쓰거나 읽는 작업은 `asmfunc.asm`에 구현
-   - `ReadVendorId`, `ReadDeviceId`, `ReadHeaderType` 등 `CONFIG_DATA`레지스터를 읽은 값을 파싱해주는 함수 구현
-   - 호스트 브릿지(버스0, 디바이스0)을 시작으로 디바이스를 탐색하는 `ScanAllBus`
-     - 호스트 브릿지의 접근가능한 모든 펑션은 그 번호가 모든 버스와 대응됨
-   - 모든 버스에 대하여 장치를 찾는(그 장치의 0번 펑션이 접근가능한 경우에 '찾음') `ScanBus`
-   - 모든 디바이스로부터 모든 펑션을 탐색하는 `ScanDevice`
-   - 펑션을 정리하여 기록하고, 만약 펑션이 `PCI-PCI 브릿지`인경우 재귀적으로 이 과정을 반복하는 `ScanFunction`
+```cpp
+pci::Device* xhc_dev = nullptr;
 
-![핵심동작원리 3-1](https://slidetodoc.com/presentation_image/210d4a0de3d960ee1efff233848261c1/image-14.jpg)
-![핵심동작원리 3-2](https://wiki.kldp.org/Translations/html/The_Linux_Kernel-KLDP/image/img6-2.jpg)
+for (int i = 0; i < pci::num_device; ++i) {
+  auto& dev = pci::devices[i];
+  auto vendor_id = pci::ReadVendorId(dev.bus, dev.device, dev.function);
+
+  Log(kDebug, "%d.%d.%d: vend 0x%04x, class 0x%02x 0x%02x 0x%02x, head 0x%02x\n", 
+    dev.bus, dev.device, dev.function, vendor_id, dev.class_code.base, dev.class_code.sub, dev.class_code.interface, dev.header_type);
+
+  if (dev.class_code.Match(0x0cu, 0x03u, 0x30u /* xHC class code */)) {
+    xhc_dev = &dev;
+
+    if (vendor_id == 0x8086) {
+      break;
+    }
+  }
+}
+
+if (xhc_dev) {
+  Log(kInfo, "xHC has been found: %d.%d.%d\n", xhc_dev->bus, xhc_dev->device, xhc_dev->function);
+}
+...
+const WithError<uint64_t> xhc_bar = pci::ReadBar(*xhc_dev, 0);
+const uint64_t xhc_mmio_base = xhc_bar.value & ~static_cast<uint64_t>(0xf);
+usb::xhci::Controller xhc{xhc_mmio_base};
+...
+for (int i = 1; i <= xhc.MaxPorts(); ++i) {
+  auto port = xhc.PortAt(i);
+  Log(kDebug, "Port %d: IsConnected=%d\n", i, port.IsConnected());
+
+  if (port.IsConnected()) {
+    if (auto err = ConfigurePort(xhc, port)) {
+      Log(kError, "failed to configure port: %s at %s:%d\n", err.Name(), err.File(), err.Line());
+      continue;
+    }
+  }
+}
+...
+```
+
+3. 마우스 이벤트를 처리할 함수를 구현하고 리스너에 등록
+   - 마우스 드라이버가 마우스의 x변화량과 y변화량을 감지하여 호출해주도록 설계되어 있음
+     - 이에 두 인자를 받아 마우스를 움직일 수 있게하는 `MouseObserver`를 작성
+     - `HIDMouseDriver::defualt_observer`를 위 함수로 등록하여 사용
+   - xHC에 축적된 이벤트를 처리하는 `ProcessEvent`를 반복적으로 호출
+     - 이 함수가 새로운 마우스 이벤트를 처리할 때 마다 `MouseObserver`가 호출될 것
 
 ```cpp
 ...
-/**
- * @brief PCI Configuration Address를 조합하여 32비트 주소값을 만드는 함수
- * @return uint32_t 주소값
- * - 31 : Enable(1)
- * - 30:24 : 예약 공간(0)
- * - 23:16 : 버스 번호(0~255)
- * - 15:11 : 디바이스 번호(0~31)
- * - 10:8 : 펑션 번호(0~31)
- * - 7:0 : 4바이트 단위 PCI 설정공간 레지스터 오프셋(0x00~0xFF)
- */
-uint32_t MakeAddress(uint8_t bus, uint8_t device, uint8_t function, uint8_t reg_addr) {...}
+char mouse_cursur_buf[sizeof(MouseCursor)];
+MouseCursor* mouse_cursor;
 
-/**
- * @brief 주어진 버스로부터 각 디바이스를 찾는 함수
- * @param bus PCI 버스 번호, 호스트 브리지에 대해서 이 번호는 펑션 번호와 같음
- */
-Error ScanBus(uint8_t bus) {...}
-
-/**
- * @brief Vendor ID가 이미 검증된(이 함수 이후로는 검증하지 않는다) 주어진 펑션 및 설정정보로부터 찾은 디바이스를 저장함,
- * 만약 PCI-PCI 브릿지를 찾은 경우에는 재귀적으로 다운스트림 방향 버스(서브 버스) 탐색함
- */
-Error ScanFunction(uint8_t bus, uint8_t device, uint8_t function) {...}
-
-/**
- * @brief 0번 펑션에 대해 이미 검증된(이 함수 이후로는 검증하지 않는다) 주어진 디바이스의 모든 펑션(0을 포함하여)을 탐색함,
- * 0번 펑션이 아닌 모든 펑션에 대해서는 Vendor ID를 검증함
- */
-Error ScanDevice(uint8_t bus, uint8_t device) {...}
+void MouseObserver(int8_t displacement_x, int8_t displacement_y) {
+  // Log(kError, "+%d, +%d\n", displacement_x, displacement_y);
+  mouse_cursor->MoveRelative({displacement_x, displacement_y});
+}
+...
+mouse_cursor = new(mouse_cursur_buf) MouseCursor(pixel_writer, kDesktopBGColor, {kFrameWidth / 2, kFrameHeight / 2});
+...
+usb::HIDMouseDriver::default_observer = MouseObserver;
+...
+while (1) {
+  if (auto err = ProcessEvent(xhc)) {
+    Log(kError, "Error while ProcessEvent: %s at %s:%d\n", err.Name(), err.File(), err.Line());
+  }
+}
 ...
 ```
 
 <br>
 
 ### 주요 동작
-`Makefile`에 새로운 `pci.o`와 `asmfunc.o`를 관찰하도록 하고 커널 빌드
+프로젝트 내에 새로운 소스 디렉토리(`usb`와 그 하위)가 생김에 따라 `Makefile`을 새로 작성했음.
+이제 모든 오브젝트 파일을 커널 루트로 가져오지 않으므로, `make clean`에서 컴파일된 바이너리를 재귀적으로 정리하도록 수정.
 
-```make
-...
-OBJS = main.o graphics.o font.o cp1251/cp1251.o newlib_support.o console.o pci.o asmfunc.o
-...
-%.o: %.asm Makefile
-	nasm -f elf64 -o $@ $<
-...
-```
+기존에 VM 게스트 환경 + QEMU를 사용했는데, 마우스 동작이 다소 부드럽지 못하여 디버깅조차 힘든 상황이므로 호스트 PC에서 동작시킴 
 
-```
-$ make
-```
+마우스 동작을 확인. 다만, 이 과정은 무한루프를 통해 이벤트를 폴링(polling)하도록 하고있기 때문에
+마우스의 움직임을 적용하기 위해 CPU를 100%사용하고 있음.
 
-```
-$ ./devenv/run_qemu.sh ./MikanLoaderX64/DEBUG_CLANG38/X64/Loader.efi ./kernel/kernel.elf
-```
+그리고, 우리가 지정한 배경색으로 마우스 커서를 지우기(덧칠)하기 때문에 만약 마우스 커서 아래에 그래픽요소가 있다면 
+배경색으로 지워짐.
 
-![주요 동작-1](./img/6A~B.png)
+![주요 동작-1](./img/6C-2.png)
