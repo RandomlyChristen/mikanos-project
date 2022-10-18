@@ -15,6 +15,8 @@
 #include "usb/xhci/xhci.hpp"
 #include "usb/xhci/trb.hpp"
 #include "mouse.hpp"
+#include "interrupt.hpp"
+#include "asmfunc.h"
 
 // void* operator new(size_t size, void* buf) { return buf; }
 // void operator delete(void* obj) noexcept {}
@@ -31,6 +33,11 @@ Console* console;
 char mouse_cursur_buf[sizeof(MouseCursor)];
 MouseCursor* mouse_cursor;
 
+/**
+ * @brief 새로운 마우스 좌표를 받아 마우스 객체를 움직이(재렌더링하)는 함수
+ * @param displacement_x 새로운 마우스의 x좌표
+ * @param displacement_y 새로운 마우스의 y좌표 
+ */
 void MouseObserver(int8_t displacement_x, int8_t displacement_y) {
     // Log(kError, "+%d, +%d\n", displacement_x, displacement_y);
     mouse_cursor->MoveRelative({displacement_x, displacement_y});
@@ -53,6 +60,51 @@ int printk(const char* format, ...) {
 
     console->PutString(s);
     return result;
+}
+
+usb::xhci::Controller* xhc;
+ 
+/**
+ * @brief XHCI USB 인터럽트 핸들러
+ * @param frame https://releases.llvm.org/5.0.0/tools/clang/docs/AttributeReference.html#id2
+ */
+__attribute__((interrupt)) 
+void IntHandlerXHCI(InterruptFrame* frame) {
+    while (xhc->PrimaryEventRing()->HasFront()) {
+        if (auto err = ProcessEvent(*xhc)) {
+            Log(kError, "Error while ProcessEvent: %s at %s:%d\n",
+                err.Name(), err.File(), err.Line());
+        }
+    }
+    NotifyEndOfInterrupt();
+}
+
+__attribute__((interrupt)) 
+void TestHandler(InterruptFrame* frame) {
+    Log(kInfo, "interrupt!!");
+    while (1) {
+        __asm__("hlt");
+    }
+    NotifyEndOfInterrupt();
+}
+
+void SwitchEhci2Xhci(const pci::Device& xhc_dev) {
+    bool intel_ehc_exist = false;
+    for (int i = 0; i < pci::num_device; ++i) {
+        if (pci::devices[i].class_code.Match(0x0cu, 0x03u, 0x20u) /* EHCI */ &&
+            0x8086 == pci::ReadVendorId(pci::devices[i].bus, pci::devices[i].device, pci::devices[i].function)) {
+            intel_ehc_exist = true;
+            break;
+        }
+    }
+    if (!intel_ehc_exist)
+        return;
+    uint32_t superspeed_ports = pci::ReadConfReg(xhc_dev, 0xdc); // USB3PRM
+    pci::WriteConfReg(xhc_dev, 0xd8, superspeed_ports); // USB3_PSSEN
+    uint32_t ehci2xhci_ports = pci::ReadConfReg(xhc_dev, 0xd4); // XUSB2PRM
+    pci::WriteConfReg(xhc_dev, 0xd0, ehci2xhci_ports); // XUSB2PR
+    Log(kDebug, "SwitchEhci2Xhci: SS = %02, xHCI = %02x\n",
+    superspeed_ports, ehci2xhci_ports);
 }
 
 /**
@@ -83,11 +135,11 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
 
     console = new(console_buf) Console(*pixel_writer, kDesktopFGColor, kDesktopBGColor);
     printk("Resolution : %d x %d\n", kFrameWidth, kFrameHeight);
-    SetLogLevel(kWarn);
+    SetLogLevel(kInfo);
 
     {
         auto err = pci::ScanAllBus();
-        Log(kDebug, "ScanAllBus: %s\n", err.Name());
+        Log(kInfo, "ScanAllBus: %s\n", err.Name());
     }
 
     pci::Device* xhc_dev = nullptr;
@@ -112,28 +164,59 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
         Log(kInfo, "xHC has been found: %d.%d.%d\n", xhc_dev->bus, xhc_dev->device, xhc_dev->function);
     }
 
+    const uint16_t cs = GetCS();
+    SetIDTEntry(idt[InterruptVector::kXHCI], MakeIDTAttr(DescriptorType::kInterruptGate, 0),
+        reinterpret_cast<uint64_t>(IntHandlerXHCI), cs);
+    Log(kInfo, "Vector : %d, Interrupt descriptor with cs 0x%02x\n", InterruptVector::kXHCI, cs);
+
+    SetIDTEntry(idt[0], MakeIDTAttr(DescriptorType::kInterruptGate, 0), 
+        reinterpret_cast<uint64_t>(TestHandler), cs);
+    Log(kInfo, "Vector : %d, Interrupt descriptor with cs 0x%02x\n", 0, cs);
+    
+    LoadIDT(sizeof(idt) - 1, reinterpret_cast<uint64_t>(&(idt[0])));
+    Log(kInfo, "IDT : 0x%08x Loaded\n", reinterpret_cast<uintptr_t>(&(idt[0])));
+
+    // Log(kInfo, "Zero Division!!!\n");
+    // volatile int a = 3, b = 0;
+    // a /= b;
+
+    const uint8_t bsp_local_apic_id =
+        (*reinterpret_cast<const uint32_t*>(0xfee00020)) >> 24;
+    Log(kInfo, "XHCI Interrupt registered for Core apic id - #%d\n", bsp_local_apic_id);
+    auto err = pci::ConfigureMSIFixedDestination(
+        *xhc_dev, bsp_local_apic_id,
+        pci::MSITriggerMode::kLevel, pci::MSIDeliveryMode::kFixed,
+        InterruptVector::kXHCI, 0
+    );
+    if (err) {
+        Log(kError, "failed to config msi: %s at %s:%d\n", err.Name(), err.File(), err.Line());
+    }
+
     const WithError<uint64_t> xhc_bar = pci::ReadBar(*xhc_dev, 0);
-    Log(kDebug, "ReadBar : %s\n", xhc_bar.error.Name());
+    Log(kInfo, "ReadBar : %s\n", xhc_bar.error.Name());
     // xHC 64bit PCI BAR(0~1)
     const uint64_t xhc_mmio_base = xhc_bar.value & ~static_cast<uint64_t>(0xf);
-    Log(kDebug, "xHC mmio_base = %08lx\n", xhc_mmio_base);
+    Log(kInfo, "xHC mmio_base = %08lx\n", xhc_mmio_base);
     
     usb::xhci::Controller xhc{xhc_mmio_base};
+    ::xhc = &xhc;
     if (0x8096 == pci::ReadVendorId(xhc_dev->bus, xhc_dev->device, xhc_dev->function)) {
-        Log(kError, "NEED TO SWITCH EHCI TO XHCI\n");
+        SwitchEhci2Xhci(*xhc_dev);
     }
     {
         auto err = xhc.Initialize();
-        Log(kDebug, "xhc.Initialize: %s\n", err.Name());
+        Log(kInfo, "xhc.Initialize: %s\n", err.Name());
     }
-    Log(kDebug, "xHC statring\n");
+    Log(kInfo, "xHC start\n");
     xhc.Run();
+
+    __asm__("sti");
 
     usb::HIDMouseDriver::default_observer = MouseObserver;
 
     for (int i = 1; i <= xhc.MaxPorts(); ++i) {
         auto port = xhc.PortAt(i);
-        Log(kDebug, "Port %d: IsConnected=%d\n", i, port.IsConnected());
+        Log(kInfo, "Port %d: IsConnected=%d\n", i, port.IsConnected());
 
         if (port.IsConnected()) {
             if (auto err = ConfigurePort(xhc, port)) {
@@ -143,11 +226,11 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
         }
     }
 
-    while (1) {
-        if (auto err = ProcessEvent(xhc)) {
-            Log(kError, "Error while ProcessEvent: %s at %s:%d\n", err.Name(), err.File(), err.Line());
-        }
-    }
+    // while (1) {
+    //     if (auto err = ProcessEvent(xhc)) {
+    //         Log(kError, "Error while ProcessEvent: %s at %s:%d\n", err.Name(), err.File(), err.Line());
+    //     }
+    // }
 
     while (1) __asm__("hlt");
 }

@@ -25,6 +25,7 @@ public:
         kInvalidPhase,
         kUnknownXHCISpeedID,
         kNoWaiter,
+        kNoPCIMSI,
         kLastOfCode,
     };
 
