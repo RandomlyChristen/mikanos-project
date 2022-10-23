@@ -17,6 +17,7 @@
 #include "mouse.hpp"
 #include "interrupt.hpp"
 #include "asmfunc.h"
+#include "queue.hpp"
 
 // void* operator new(size_t size, void* buf) { return buf; }
 // void operator delete(void* obj) noexcept {}
@@ -63,30 +64,6 @@ int printk(const char* format, ...) {
 }
 
 usb::xhci::Controller* xhc;
- 
-/**
- * @brief XHCI USB 인터럽트 핸들러
- * @param frame https://releases.llvm.org/5.0.0/tools/clang/docs/AttributeReference.html#id2
- */
-__attribute__((interrupt)) 
-void IntHandlerXHCI(InterruptFrame* frame) {
-    while (xhc->PrimaryEventRing()->HasFront()) {
-        if (auto err = ProcessEvent(*xhc)) {
-            Log(kError, "Error while ProcessEvent: %s at %s:%d\n",
-                err.Name(), err.File(), err.Line());
-        }
-    }
-    NotifyEndOfInterrupt();
-}
-
-__attribute__((interrupt)) 
-void TestHandler(InterruptFrame* frame) {
-    Log(kInfo, "interrupt!!");
-    while (1) {
-        __asm__("hlt");
-    }
-    NotifyEndOfInterrupt();
-}
 
 void SwitchEhci2Xhci(const pci::Device& xhc_dev) {
     bool intel_ehc_exist = false;
@@ -105,6 +82,27 @@ void SwitchEhci2Xhci(const pci::Device& xhc_dev) {
     pci::WriteConfReg(xhc_dev, 0xd0, ehci2xhci_ports); // XUSB2PR
     Log(kDebug, "SwitchEhci2Xhci: SS = %02, xHCI = %02x\n",
     superspeed_ports, ehci2xhci_ports);
+}
+
+struct Message {
+    enum Type {
+        kInterruptXHCI,
+    } type;
+};
+
+/**
+ * @brief 외부 인터럽트 발생에 따른 Message객체를 저장하는 FIFO
+ */
+ArrayQueue<Message>* main_queue;
+
+__attribute__((interrupt)) 
+void IntHandlerXHCI(InterruptFrame* frame) {
+    auto err = main_queue->Push(Message{Message::kInterruptXHCI});
+    if (err) {
+        Log(kInfo, "Interrupt dismissed %s at %s:%d\n", err.Name(), err.File(), err.Line());
+    }
+    
+    NotifyEndOfInterrupt();
 }
 
 /**
@@ -168,17 +166,9 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
     SetIDTEntry(idt[InterruptVector::kXHCI], MakeIDTAttr(DescriptorType::kInterruptGate, 0),
         reinterpret_cast<uint64_t>(IntHandlerXHCI), cs);
     Log(kInfo, "Vector : %d, Interrupt descriptor with cs 0x%02x\n", InterruptVector::kXHCI, cs);
-
-    SetIDTEntry(idt[0], MakeIDTAttr(DescriptorType::kInterruptGate, 0), 
-        reinterpret_cast<uint64_t>(TestHandler), cs);
-    Log(kInfo, "Vector : %d, Interrupt descriptor with cs 0x%02x\n", 0, cs);
     
     LoadIDT(sizeof(idt) - 1, reinterpret_cast<uint64_t>(&(idt[0])));
     Log(kInfo, "IDT : 0x%08x Loaded\n", reinterpret_cast<uintptr_t>(&(idt[0])));
-
-    // Log(kInfo, "Zero Division!!!\n");
-    // volatile int a = 3, b = 0;
-    // a /= b;
 
     const uint8_t bsp_local_apic_id =
         (*reinterpret_cast<const uint32_t*>(0xfee00020)) >> 24;
@@ -200,6 +190,7 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
     
     usb::xhci::Controller xhc{xhc_mmio_base};
     ::xhc = &xhc;
+
     if (0x8096 == pci::ReadVendorId(xhc_dev->bus, xhc_dev->device, xhc_dev->function)) {
         SwitchEhci2Xhci(*xhc_dev);
     }
@@ -209,8 +200,6 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
     }
     Log(kInfo, "xHC start\n");
     xhc.Run();
-
-    __asm__("sti");
 
     usb::HIDMouseDriver::default_observer = MouseObserver;
 
@@ -226,13 +215,34 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
         }
     }
 
-    // while (1) {
-    //     if (auto err = ProcessEvent(xhc)) {
-    //         Log(kError, "Error while ProcessEvent: %s at %s:%d\n", err.Name(), err.File(), err.Line());
-    //     }
-    // }
+    std::array<Message, 32> main_queue_data;
+    ArrayQueue<Message> main_queue{main_queue_data};
+    ::main_queue = &main_queue;
 
-    while (1) __asm__("hlt");
+    __asm__("sti");
+    /**
+     * @brief 외부 인터럽트 이벤트 루프
+     */
+    while (true) {
+        __asm__("cli");
+        if (main_queue.Count() == 0) {
+            __asm__("sti\n\thlt");
+            continue;
+        }
+
+        Message msg = main_queue.Front();
+        main_queue.Pop();
+        __asm__("sti");
+
+        switch (msg.type) {
+            case Message::kInterruptXHCI:
+                if (auto err = ProcessEvent(xhc)) {
+                    Log(kError, "Error while ProcessEvent: %s at %s:%d\n",
+                        err.Name(), err.File(), err.Line());
+                }
+                break;
+        }
+    }
 }
 
 extern "C" void __cxa_pure_virtual() {
