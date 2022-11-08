@@ -10,17 +10,10 @@
 #include  <Protocol/BlockIo.h>
 #include  <Guid/FileInfo.h>
 
-#include  "frame_buffer_config.hpp"
-#include  "elf.hpp"
+#include "frame_buffer_config.hpp"
+#include "memory_map.hpp"
+#include "elf.hpp"
 
-struct MemoryMap {
-    UINTN buffer_size;
-    VOID* buffer;
-    UINTN map_size;
-    UINTN map_key;
-    UINTN descriptor_size;
-    UINT32 descriptor_version;
-};
 
 EFI_STATUS GetMemoryMap(struct MemoryMap* map) {
     if (map->buffer == NULL) {
@@ -233,15 +226,13 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
     );
     if (EFI_ERROR(status)) {
         Print(L"Failed to open file \\memmap: %r\n", status);
-        // Halt();
     }
     else {
         Print(L"file opened\n");
         Print(L"Saving memory map into \\memmap...\n");
         status = SaveMemoryMap(&memmap, memmap_file);
         if (EFI_ERROR(status)) {
-            Print(L"Failed to save memory map to \\memmap: %r\n", status);
-            // Halt();
+            Print(L"Failed to save memory map to \\memmap: %r\n", status);\
         } else {
             Print(L"Done\n");
         }
@@ -379,9 +370,9 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_tab
     // #@@ range_begin(call_kernel)
     UINT64 entry_addr = *(UINT64*)(kernel_first_addr + 24);
 
-    typedef void EntryPointType(const struct FrameBufferConfig*);
+    typedef void EntryPointType(const struct FrameBufferConfig*, const struct MemoryMap*);
     EntryPointType* entry_point = (EntryPointType*)entry_addr;
-    entry_point(&fb_config);
+    entry_point(&fb_config, &memmap);
     // #@@ range_end(call_kernel)
 
     Halt();

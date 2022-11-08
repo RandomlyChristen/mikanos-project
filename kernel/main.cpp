@@ -2,7 +2,9 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstdarg>
+#include <array>
 
+#include "memory_map.hpp"
 #include "graphics.hpp"
 #include "font.hpp"
 #include "console.hpp"
@@ -18,6 +20,8 @@
 #include "interrupt.hpp"
 #include "asmfunc.h"
 #include "queue.hpp"
+#include "segment.hpp"
+#include "paging.hpp"
 
 // void* operator new(size_t size, void* buf) { return buf; }
 // void operator delete(void* obj) noexcept {}
@@ -40,7 +44,6 @@ MouseCursor* mouse_cursor;
  * @param displacement_y 새로운 마우스의 y좌표 
  */
 void MouseObserver(int8_t displacement_x, int8_t displacement_y) {
-    // Log(kError, "+%d, +%d\n", displacement_x, displacement_y);
     mouse_cursor->MoveRelative({displacement_x, displacement_y});
 }
 
@@ -106,10 +109,19 @@ void IntHandlerXHCI(InterruptFrame* frame) {
 }
 
 /**
+ * @brief 커널 콜에 사용될 스택
+ */
+alignas(16) uint8_t kernel_main_stack[1024 * 1024];
+
+/**
  * @brief 커널의 엔트리포인트 
  * @param frame_buffer_config FrameBufferConfig 타입, BIOS로부터 받아온 프레임 버퍼와 그 정보 
+ * @param memory_map MemoryMap 타입, UEFI로부터 받아온 메모리 맵 정보
  */
-extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
+extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_ref, const MemoryMap& memory_map_ref) {
+    FrameBufferConfig frame_buffer_config{frame_buffer_config_ref};
+    MemoryMap memory_map{memory_map_ref};
+    
     switch (frame_buffer_config.pixel_format) {
         case kPixelBGRResv8BitPerColor:
             pixel_writer = new(pixel_writer_buf)
@@ -134,6 +146,46 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
     console = new(console_buf) Console(*pixel_writer, kDesktopFGColor, kDesktopBGColor);
     printk("Resolution : %d x %d\n", kFrameWidth, kFrameHeight);
     SetLogLevel(kInfo);
+
+    std::array<MemoryType, 3> available_memory_types{
+        MemoryType::kEfiBootServicesCode,
+        MemoryType::kEfiBootServicesData,
+        MemoryType::kEfiConventionalMemory,
+    };
+
+    int total_avilable_pages = 0;
+    Log(kInfo, "memory_map: %p\n", &memory_map);
+    for (uintptr_t iter = reinterpret_cast<uintptr_t>(memory_map.buffer);
+            iter < reinterpret_cast<uintptr_t>(memory_map.buffer) + memory_map.map_size;
+            iter += memory_map.descriptor_size) {
+        auto desc = reinterpret_cast<MemoryDescriptor*>(iter);
+
+        for (int i = 0; i < available_memory_types.size(); ++i) {
+            if (desc->type == available_memory_types[i]) 
+            {
+                total_avilable_pages += desc->number_of_pages;
+                Log(kInfo, "type = %u, phys = %08lx - %08lx, pages = %lu, attr = %08lx\n",
+                        desc->type,
+                        desc->physical_start,
+                        desc->physical_start + desc->number_of_pages * 4096 - 1,
+                        desc->number_of_pages,
+                        desc->attribute);
+            }
+        }
+    }
+    Log(kInfo, "total available pages: %d(%dKiB)\n", total_avilable_pages, total_avilable_pages * 4);
+
+    SetupSegments();
+    const uint16_t kernel_cs = 1 << 3;
+    const uint16_t kernel_ss = 2 << 3;
+    SetDSAll(0);
+    SetCSSS(kernel_cs, kernel_ss);
+
+    SetupIdentityPageTable();
+
+    // while (true) {
+    //     __asm__("hlt");
+    // }
 
     {
         auto err = pci::ScanAllBus();

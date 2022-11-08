@@ -4,7 +4,7 @@
 
 class Console {
 public:
-    static const int kRows = 25, kColumns = 80;
+    static const int kRows = 30, kColumns = 80;
 
     /**
      * @brief 콘솔 클래스의 생성자

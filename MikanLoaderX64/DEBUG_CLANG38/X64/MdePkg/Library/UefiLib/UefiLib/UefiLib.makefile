@@ -1,1 +1,0 @@
-/home/isugyun/edk2/Build/MikanLoaderX64/DEBUG_CLANG38/X64/MdePkg/Library/UefiLib/UefiLib/GNUmakefile

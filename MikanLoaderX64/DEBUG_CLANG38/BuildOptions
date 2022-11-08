@@ -1,3 +1,0 @@
-gCommandLineDefines: {'ARCH': 'X64'}
-BuildOptionPcd: []
-Active Platform: /home/isugyun/edk2/MikanLoaderPkg/MikanLoaderPkg.dsc

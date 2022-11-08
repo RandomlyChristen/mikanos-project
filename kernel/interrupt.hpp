@@ -3,15 +3,7 @@
 #include <array>
 #include <cstdint>
 
-enum class DescriptorType {
-    kUpper8Bytes = 0,
-    kLDT = 2,
-    kTSSAvailable = 9,
-    kTSSBusy = 11,
-    kCallGate = 12,
-    kInterruptGate = 14,
-    kTrapGate = 15
-};
+#include "x86_descriptor.hpp"
 
 /**
  * @brief 인터럽트 기술자 속성, type으로 인터럽트와 트랩을 구분함. DPL은 인터럽트가 핸들링 되는 권한레벨
