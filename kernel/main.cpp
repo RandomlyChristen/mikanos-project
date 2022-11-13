@@ -22,9 +22,8 @@
 #include "queue.hpp"
 #include "segment.hpp"
 #include "paging.hpp"
+#include "memory_manager.hpp"
 
-// void* operator new(size_t size, void* buf) { return buf; }
-// void operator delete(void* obj) noexcept {}
 
 const PixelColor kDesktopBGColor{45, 118, 237};
 const PixelColor kDesktopFGColor{255, 255, 255};
@@ -65,6 +64,9 @@ int printk(const char* format, ...) {
     console->PutString(s);
     return result;
 }
+
+char memory_manager_buf[sizeof(BitmapMemoryManager)];
+BitmapMemoryManager* memory_manager;
 
 usb::xhci::Controller* xhc;
 
@@ -147,34 +149,6 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
     printk("Resolution : %d x %d\n", kFrameWidth, kFrameHeight);
     SetLogLevel(kInfo);
 
-    std::array<MemoryType, 3> available_memory_types{
-        MemoryType::kEfiBootServicesCode,
-        MemoryType::kEfiBootServicesData,
-        MemoryType::kEfiConventionalMemory,
-    };
-
-    int total_avilable_pages = 0;
-    Log(kInfo, "memory_map: %p\n", &memory_map);
-    for (uintptr_t iter = reinterpret_cast<uintptr_t>(memory_map.buffer);
-            iter < reinterpret_cast<uintptr_t>(memory_map.buffer) + memory_map.map_size;
-            iter += memory_map.descriptor_size) {
-        auto desc = reinterpret_cast<MemoryDescriptor*>(iter);
-
-        for (int i = 0; i < available_memory_types.size(); ++i) {
-            if (desc->type == available_memory_types[i]) 
-            {
-                total_avilable_pages += desc->number_of_pages;
-                Log(kInfo, "type = %u, phys = %08lx - %08lx, pages = %lu, attr = %08lx\n",
-                        desc->type,
-                        desc->physical_start,
-                        desc->physical_start + desc->number_of_pages * 4096 - 1,
-                        desc->number_of_pages,
-                        desc->attribute);
-            }
-        }
-    }
-    Log(kInfo, "total available pages: %d(%dKiB)\n", total_avilable_pages, total_avilable_pages * 4);
-
     SetupSegments();
     const uint16_t kernel_cs = 1 << 3;
     const uint16_t kernel_ss = 2 << 3;
@@ -182,6 +156,40 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
     SetCSSS(kernel_cs, kernel_ss);
 
     SetupIdentityPageTable();
+
+    ::memory_manager = new(memory_manager_buf) BitmapMemoryManager;
+
+    const auto memory_map_base = reinterpret_cast<uintptr_t>(memory_map.buffer);
+    uintptr_t available_end = 0;
+    for (uintptr_t iter = memory_map_base;
+            iter < memory_map_base + memory_map.map_size;
+            iter += memory_map.descriptor_size) {
+        auto desc = reinterpret_cast<const MemoryDescriptor*>(iter);
+        if (available_end < desc->physical_start) {
+            memory_manager->MarkAllocated(
+                FrameID{available_end / kBytesPerFrame},
+                (desc->physical_start - available_end) / kBytesPerFrame);
+            Log(kInfo, "Page [N/A] : 0x%08x (%d pages)\n", desc->physical_start, desc->number_of_pages);
+        }
+
+        const auto physical_end =
+            desc->physical_start + desc->number_of_pages * kUEFIPageSize;
+        if (IsAvailable(static_cast<MemoryType>(desc->type))) {
+            available_end = physical_end;
+            Log(kInfo, "Page [Available] : 0x%08x (%d pages)\n", desc->physical_start, desc->number_of_pages);
+        } else {
+            memory_manager->MarkAllocated(
+                FrameID{desc->physical_start / kBytesPerFrame},
+                desc->number_of_pages * kUEFIPageSize / kBytesPerFrame);
+            Log(kInfo, "Page [Reserved] : 0x%08x (%d pages)\n", desc->physical_start, desc->number_of_pages);
+        }
+    }
+    memory_manager->SetMemoryRange(FrameID{1}, FrameID{available_end / kBytesPerFrame});
+
+    FrameID frame_id_1 = memory_manager->Allocate(10).value;
+    Log(kInfo, "Allocated : 0x%08x (%d pages)\n", frame_id_1.ID() * 4_KiB, 10);
+    FrameID frame_id_2 = memory_manager->Allocate(10).value;
+    Log(kInfo, "Allocated : 0x%08x (%d pages)\n", frame_id_2.ID() * 4_KiB, 10);
 
     // while (true) {
     //     __asm__("hlt");
