@@ -23,10 +23,9 @@
 #include "segment.hpp"
 #include "paging.hpp"
 #include "memory_manager.hpp"
+#include "window.hpp"
+#include "layer.hpp"
 
-
-const PixelColor kDesktopBGColor{45, 118, 237};
-const PixelColor kDesktopFGColor{255, 255, 255};
 
 char pixel_writer_buf[sizeof(RGBResv8BitPerColorPixelWriter)];
 PixelWriter* pixel_writer;
@@ -34,24 +33,13 @@ PixelWriter* pixel_writer;
 char console_buf[sizeof(Console)];
 Console* console;
 
-char mouse_cursur_buf[sizeof(MouseCursor)];
-MouseCursor* mouse_cursor;
+unsigned int mouse_layer_id;
 
-/**
- * @brief 새로운 마우스 좌표를 받아 마우스 객체를 움직이(재렌더링하)는 함수
- * @param displacement_x 새로운 마우스의 x좌표
- * @param displacement_y 새로운 마우스의 y좌표 
- */
 void MouseObserver(int8_t displacement_x, int8_t displacement_y) {
-    mouse_cursor->MoveRelative({displacement_x, displacement_y});
+    layer_manager->MoveRelative(mouse_layer_id, {displacement_x, displacement_y});
+    layer_manager->Draw();
 }
 
-/**
- * @brief 콘솔에 서식 문자열을 표시하는 printk 함수
- * @param format 문자열 서식
- * @param ... 서식지정 치환 값의 가변인자 리스트
- * @return int vsprintf의 결과 값
- */
 int printk(const char* format, ...) {
     va_list ap;
     int result;
@@ -135,18 +123,10 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
             break;
     }
 
-    const int kFrameWidth = frame_buffer_config.horizontal_resolution;
-    const int kFrameHeight = frame_buffer_config.vertical_resolution;
+    DrawDesktop(*pixel_writer);
 
-    FillRectangle(*pixel_writer, {0, 0}, {kFrameWidth, kFrameHeight - 50}, kDesktopBGColor);
-    FillRectangle(*pixel_writer, {0, kFrameHeight - 50}, {kFrameWidth, 50}, {1, 8, 17});
-    FillRectangle(*pixel_writer, {0, kFrameHeight - 50}, {kFrameWidth / 5, 50}, {80, 80, 80});
-    DrawRectangle(*pixel_writer, {10, kFrameHeight - 40}, {30, 30}, {160, 160, 160});
-
-    mouse_cursor = new(mouse_cursur_buf) MouseCursor(pixel_writer, kDesktopBGColor, {kFrameWidth / 2, kFrameHeight / 2});
-
-    console = new(console_buf) Console(*pixel_writer, kDesktopFGColor, kDesktopBGColor);
-    printk("Resolution : %d x %d\n", kFrameWidth, kFrameHeight);
+    console = new(console_buf) Console(pixel_writer, kDesktopFGColor, kDesktopBGColor);
+    printk("Resolution : %d x %d\n", pixel_writer->Width(), pixel_writer->Height());
     SetLogLevel(kInfo);
 
     SetupSegments();
@@ -190,6 +170,12 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
     Log(kInfo, "Allocated : 0x%08x (%d pages)\n", frame_id_1.ID() * 4_KiB, 10);
     FrameID frame_id_2 = memory_manager->Allocate(10).value;
     Log(kInfo, "Allocated : 0x%08x (%d pages)\n", frame_id_2.ID() * 4_KiB, 10);
+
+    if (auto err = InitializeHeap(*memory_manager)) {
+        Log(kError, "failed to allocate pages: %s at %s:%d\n",
+            err.Name(), err.File(), err.Line());
+        exit(1);
+    }
 
     // while (true) {
     //     __asm__("hlt");
@@ -274,6 +260,36 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
             }
         }
     }
+
+    const int kFrameWidth = frame_buffer_config.horizontal_resolution;
+    const int kFrameHeight = frame_buffer_config.vertical_resolution;
+
+    auto bgwindow = std::make_shared<Window>(kFrameWidth, kFrameHeight);
+    auto bgwriter = bgwindow->Writer();
+
+    DrawDesktop(*bgwriter);
+    console->SetWriter(bgwriter);
+
+    auto mouse_window = std::make_shared<Window>(
+        kMouseCursorWidth, kMouseCursorHeight);
+    mouse_window->SetTransparentColor(kMouseTransparentColor);
+    DrawMouseCursor(mouse_window->Writer(), {0, 0});
+
+    layer_manager = new LayerManager;
+    layer_manager->SetWriter(pixel_writer);
+
+    auto bglayer_id = layer_manager->NewLayer()
+        .SetWindow(bgwindow)
+        .Move({0, 0})
+        .ID();
+    mouse_layer_id = layer_manager->NewLayer()
+        .SetWindow(mouse_window)
+        .Move({kFrameWidth / 2, kFrameHeight / 2})
+        .ID();
+
+    layer_manager->UpDown(bglayer_id, 0);
+    layer_manager->UpDown(mouse_layer_id, 1);
+    layer_manager->Draw();
 
     std::array<Message, 32> main_queue_data;
     ArrayQueue<Message> main_queue{main_queue_data};

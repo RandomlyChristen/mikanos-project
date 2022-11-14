@@ -12,14 +12,16 @@ public:
      * @param fg_color 전경(폰트) 색상
      * @param bg_color 배경 색상
      */
-    Console(PixelWriter& writer, 
+    Console(PixelWriter* writer, 
         const PixelColor& fg_color, const PixelColor& bg_color);
     void PutString(const char* s);
+    void SetWriter(PixelWriter* writer);
 
 private:
     void Newline();
+    void Refresh();
 
-    PixelWriter& writer_;
+    PixelWriter* writer_;
     const PixelColor fg_color_, bg_color_;
     char buffer_[kRows][kColumns + 1];
     int cursor_row_, cursor_columns_;
