@@ -25,6 +25,7 @@
 #include "memory_manager.hpp"
 #include "window.hpp"
 #include "layer.hpp"
+#include "timer.hpp"
 
 
 char pixel_writer_buf[sizeof(RGBResv8BitPerColorPixelWriter)];
@@ -34,11 +35,6 @@ char console_buf[sizeof(Console)];
 Console* console;
 
 unsigned int mouse_layer_id;
-
-void MouseObserver(int8_t displacement_x, int8_t displacement_y) {
-    layer_manager->MoveRelative(mouse_layer_id, {displacement_x, displacement_y});
-    layer_manager->Draw();
-}
 
 int printk(const char* format, ...) {
     va_list ap;
@@ -51,6 +47,15 @@ int printk(const char* format, ...) {
 
     console->PutString(s);
     return result;
+}
+
+void MouseObserver(int8_t displacement_x, int8_t displacement_y) {
+    layer_manager->MoveRelative(mouse_layer_id, {displacement_x, displacement_y});
+    StartLAPICTimer();
+    layer_manager->Draw();
+    auto elapsed = LAPICTimerElapsed();
+    StopLAPICTimer();
+    printk("MouseObserver: elapsed = %u\n", elapsed);
 }
 
 char memory_manager_buf[sizeof(BitmapMemoryManager)];
@@ -127,7 +132,9 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
 
     console = new(console_buf) Console(pixel_writer, kDesktopFGColor, kDesktopBGColor);
     printk("Resolution : %d x %d\n", pixel_writer->Width(), pixel_writer->Height());
-    SetLogLevel(kInfo);
+    SetLogLevel(kError);
+
+    InitializeLAPICTimer();
 
     SetupSegments();
     const uint16_t kernel_cs = 1 << 3;
