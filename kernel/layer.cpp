@@ -1,4 +1,5 @@
 #include "layer.hpp"
+#include "frame_buffer.hpp"
 
 #include <algorithm>
 
@@ -24,13 +25,13 @@ Layer &Layer::MoveRelative(Vector2D<int> pos_diff) {
     return *this;
 }
 
-void Layer::DrawTo(PixelWriter &writer) const {
+void Layer::DrawTo(FrameBuffer &screen) const {
     if (window_) {
-        window_->DrawTo(writer, pos_);
+        window_->DrawTo(screen, pos_);
     }
 }
 
-void LayerManager::SetWriter(PixelWriter *writer) { writer_ = writer; }
+void LayerManager::SetWriter(FrameBuffer *screen) { screen_ = screen; }
 
 Layer &LayerManager::NewLayer() {
     ++latest_id_;
@@ -39,7 +40,7 @@ Layer &LayerManager::NewLayer() {
 
 void LayerManager::Draw() const {
     for (auto layer : layer_stack_) {
-        layer->DrawTo(*writer_);
+        layer->DrawTo(*screen_);
     }
 }
 

@@ -31,7 +31,7 @@ public:
     Layer& MoveRelative(Vector2D<int> pos_diff);
 
     /** @brief writer 에 현재 설정되어 있는 윈도우의 내용을 렌더링 한다. */
-    void DrawTo(PixelWriter& writer) const;
+    void DrawTo(FrameBuffer& screen) const;
 
 private:
     unsigned int id_;
@@ -43,7 +43,7 @@ private:
 class LayerManager {
 public:
     /** @brief Draw 메소드 등으로 묘화할 때의 writer를 설정한다. */
-    void SetWriter(PixelWriter* writer);
+    void SetWriter(FrameBuffer* screen);
     /** @brief 새 레이어를 생성하고 참조를 반환합니다.
      *
      * 새로 생성된 레이어의 실체는 LayerManager 내부의 컨테이너에 보관 유지된다.
@@ -69,7 +69,7 @@ public:
     void Hide(unsigned int id);
 
 private:
-    PixelWriter* writer_{nullptr};
+    FrameBuffer* screen_{ nullptr };
     std::vector<std::unique_ptr<Layer>> layers_{};
     std::vector<Layer*> layer_stack_{};
     unsigned int latest_id_{0};

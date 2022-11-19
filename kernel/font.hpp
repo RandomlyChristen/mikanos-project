@@ -9,7 +9,7 @@
  * @param c 표시할 아스키 문자
  * @param color 문자를 표시할 색상
  */
-void WriteAscii(PixelWriter& writer, int x, int y, char c, const PixelColor& color);
+void WriteAscii(PixelWriter& writer, Vector2D<int> pos, char c, const PixelColor& color);
 
 /**
  * @brief 화면에 아스키 문자열을 표시하는 함수
@@ -18,4 +18,4 @@ void WriteAscii(PixelWriter& writer, int x, int y, char c, const PixelColor& col
  * @param s 표시할 아스키 문자열의 주소
  * @param color 문자열을 표시할 색상
  */
-void WriteString(PixelWriter& writer, int x, int y, const char* s, const PixelColor& color);
+void WriteString(PixelWriter& writer, Vector2D<int> pos, const char* s, const PixelColor& color);
