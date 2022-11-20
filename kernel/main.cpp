@@ -46,7 +46,14 @@ int printk(const char* format, ...) {
     result = vsprintf(s, format, ap);
     va_end(ap);
 
+    StartLAPICTimer();
     console->PutString(s);
+    auto elapsed = LAPICTimerElapsed();
+    StopLAPICTimer();
+
+    sprintf(s, "[%9d]", elapsed);
+    console->PutString(s);
+
     return result;
 }
 
@@ -131,9 +138,10 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
 
     DrawDesktop(*pixel_writer);
 
-    console = new(console_buf) Console(pixel_writer, kDesktopFGColor, kDesktopBGColor);
+    console = new(console_buf) Console(kDesktopFGColor, kDesktopBGColor);
+    console->SetWriter(pixel_writer);
     printk("Resolution : %d x %d\n", pixel_writer->Width(), pixel_writer->Height());
-    SetLogLevel(kError);
+    SetLogLevel(kInfo);
 
     InitializeLAPICTimer();
 
@@ -276,7 +284,6 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
     auto bgwriter = bgwindow->Writer();
 
     DrawDesktop(*bgwriter);
-    console->SetWriter(bgwriter);
 
     auto mouse_window = std::make_shared<Window>(
         kMouseCursorWidth, kMouseCursorHeight, frame_buffer_config.pixel_format);
@@ -291,6 +298,7 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
 
     layer_manager = new LayerManager;
     layer_manager->SetWriter(&screen);
+    console->SetWindow(bgwindow);
 
     auto bglayer_id = layer_manager->NewLayer()
         .SetWindow(bgwindow)

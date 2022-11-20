@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdio>
+#include <cstdarg>
 
 #include "console.hpp"
 
@@ -14,6 +15,8 @@ extern Console* console;
 void SetLogLevel(LogLevel level) {
     log_level = level;
 }
+
+extern int printk(const char* format, ...);
 
 int Log(LogLevel level, const char* format, ...) {
     if (level > log_level) {
@@ -28,6 +31,8 @@ int Log(LogLevel level, const char* format, ...) {
     result = vsprintf(s, format, ap);
     va_end(ap);
 
-    console->PutString(s);
+    printk(s);
+
+    // console->PutString(s);
     return result;
 }

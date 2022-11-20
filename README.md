@@ -1,121 +1,130 @@
 # MikanOS project
-## Day 9C, 중첩처리 고속화
+## Day 9D~E, 스크롤처리 고속화
 <br>
 
 ### 주요 개발 사항
-1. shadow buffer의 개념을 도입하여 `PixelWriter::Write`의 호출을 억제
+1. `printk()`의 스크롤 시간 측정
+2. `Window::Move()`를 통해 스크롤에서 발생하는 `PixelWriter::Write()`억제
 
 <br>
 
 ### 핵심 동작 원리
-1. 렌더링 flow의 복잡성을 줄이기 위해 shadow buffer 도입
-   - 이전까지의 화면 갱신은 아래 flow를 통해 일어남
-     - UI요소의 데이터가 바뀜, `MouseObserver()`, `Console::PutString()`
-       - 상기 UI요소를 내포하는 `Window::data_`가 변경됨
-     - 화면 갱신을 위해 상기 함수가 `LayerManager::Draw()` 호출
-     - 레이어 스택을 하위에서부터 상위까지 순회하며 `Layer::DrawTo()` 호출
-       - 이 때, `LayerManager`가 가지고 있는 `PixelWriter`를 전달
-       - 이 `PixelWriter`는 `main` 초기 `FrameBufferConfig`를 통해 초기화 된 전역 값
-     - `Layer::DrawTo()`는 `Window::DrawTo()`를 호출
-     - `Window::data_`값에 대응되는 픽셀을 `LayerManager`로부터 넘겨받은 `PixelWriter::Write()`로 값을 씀
-   - 결국 `PixelWriter::Write()`가 모든 레이어에 대해 윈도우의 `_data` 크기만큼 호출됨
-   - `_data`를 실제 프레임버퍼에 `memcpy`할 수 있다면 상당한 고속화를 이뤄낼 수 있음
-     - 하지만, `_data`는 `PixelColor` 타입의 2차원 벡터임
-     - `config_.frame_buffer`에 즉시 대입할 수 없음
-   - 따라서 `_data`와 함께 윈도우가 자체적으로 다루는 `FrameBuffer` 즉, `Window::shadow_buffer_`를 갖게 함
-   - 기존 과정에서 모든 레이어-윈도우의 이동 등의 업데이트가 `Window::shadow_buffer_`에 반영됨
-   - `LayerManager::Draw()`는 `Layer::DrawTo()`에 전역 `FrameBuffer`를 전달
-   - 이렇게 `Window::DrawTo()`까지 전달된 전역 `FrameBuffer`는 각 `shadow_buffer_`로부터 값을 복사받음
-     - 이 과정에서 윈도우의 크기만큼 적절히 `memcpy`를 통한 복사가 일어나므로 고속화 달성
+1. `printk()`에 LAPIC 타이머를 활용한 시간측정을 적용
+   - `MouseObserver`때와 마찬가지
+   - 책과는 다르게 이 레포에서는 `logger`에도 적용하도록 함
+     - 실제로 `Log()`는 `printk()`와 마찬가지로 `Console::PutString()`을 사용
+     - `printk`를 `extern`으로 받아서 사용할 수 있도록 함
 
 ```cpp
-// layer.hpp
-class LayerManager {
-public:
-  void SetWriter(FrameBuffer* screen);
-  ...
+// main.cpp
+int printk(const char* format, ...) {
+  va_list ap;
+  int result;
+  char s[1024];
 
-private:
-  // 레이어 매니저가 전역 프레임 버퍼를 받고 이것을 하위 레이어 및 윈도우에 전달할 수 있게 함
-  FrameBuffer* screen_{ nullptr };
-  ...
-};
+  va_start(ap, format);
+  result = vsprintf(s, format, ap);
+  va_end(ap);
 
-// layer.cpp
-void LayerManager::Draw() const {
-  for (auto layer : layer_stack_) {
-    layer->DrawTo(*screen_);
-  }
-}
-...
-void Layer::DrawTo(FrameBuffer &screen) const {
-  if (window_) {
-    window_->DrawTo(screen, pos_);
-  }
+  StartLAPICTimer();
+  console->PutString(s);
+  auto elapsed = LAPICTimerElapsed();
+  StopLAPICTimer();
+
+  sprintf(s, "[%9d]", elapsed);
+  console->PutString(s);
+
+  return result;
 }
 
-// window.cpp
-Window::Window(int width, int height, PixelFormat shadow_format)
-  : width_{width}, height_{height} {
-  data_.resize(height);
-  for (int y = 0; y < height; ++y) {
-    data_[y].resize(width);
+// logger.cpp
+extern int printk(const char* format, ...);
+
+int Log(LogLevel level, const char* format, ...) {
+  if (level > log_level) {
+    return 0;
   }
 
-  // 윈도우가 자체적인 프레임 버퍼 즉, shadow_buffer_를 초기화
-  FrameBufferConfig config{};
-  config.frame_buffer = nullptr;
-  config.horizontal_resolution = width;
-  config.vertical_resolution = height;
-  config.pixel_format = shadow_format;
+  va_list ap;
+  int result;
+  char s[1024];
 
-  if (auto err = shadow_buffer_.Initialize(config)) {
-    Log(kError, "failed to initialize shadow buffer: %s at %s:%d\n",
-      err.Name(), err.File(), err.Line());
-  }
+  va_start(ap, format);
+  result = vsprintf(s, format, ap);
+  va_end(ap);
+
+  printk(s);
+
+  // console->PutString(s);
+  return result;
 }
+```
 
-void Window::DrawTo(FrameBuffer &dst, Vector2D<int> position) {
-  // 투명 처리를 할 필요가 없으면 복사를 호출
-  if (!transparent_color_) {
-    dst.Copy(position, shadow_buffer_);
-    return;
-  }
+![핵심동작원리 1-1](img/9D~E-1.gif)
 
-  // 투명처리가 필요하면 FrameBufferWriter::Write로 값을 쓴다
-  const auto tc = transparent_color_.value();
-  auto &writer = dst.Writer();
-  for (int y = 0; y < Height(); ++y) {
-    for (int x = 0; x < Width(); ++x) {
-      const auto c = At(Vector2D<int>{x, y});
-      if (c != tc) {
-        writer.Write(position + Vector2D<int>{x, y}, c);
-      }
+<br>
+
+2. `Console::Newline()`에서 콘솔이 위치한 윈도우의 프레임 버퍼를 한 줄 크기만큼 위로 이동시킴
+   - 기존의 `Newline`은 배경에 해당하는 영역을 `PixelWriter::Write()`로 칠한다음 `Console::buffer_`의 문자열 내용을 덮어씌움
+     - 이 작업에서 가장 높은 라인은 사라지고 2번째 라인부터 덮어씌워짐
+   - 하지만 위 작업은 윈도우가 적용된 이상 문자열을 다시 렌더링 할 필요가 없음
+     - 2번째 줄에 해당하는 영역부터 마지막 줄의 영역에 해당하는 `FrameBuffer(Window::shadow_buffer_)`를 한 줄 크기만큼 위로 이동(`Move`) 시키면 됨
+   - 이를 위해 `FrameBuffer::Move()`를 설계하고 `Window::Move()`가 자신의 `shadow_buffer_`에 대해 사용하게 함
+
+```cpp
+// frame_buffer.cpp
+void FrameBuffer::Move(Vector2D<int> dst_pos, const Rectangle<int> &src) {
+  const auto bytes_per_pixel = BytesPerPixel(config_.pixel_format);
+  const auto bytes_per_scan_line = BytesPerScanLine(config_);
+
+  if (dst_pos.y < src.pos.y) { // move up
+    uint8_t *dst_buf = FrameAddrAt(dst_pos, config_);
+    const uint8_t *src_buf = FrameAddrAt(src.pos, config_);
+    for (int y = 0; y < src.size.y; ++y) {
+      memcpy(dst_buf, src_buf, bytes_per_pixel * src.size.x);
+      dst_buf += bytes_per_scan_line;
+      src_buf += bytes_per_scan_line;
+    }
+  } else { // move down
+    uint8_t *dst_buf =
+      FrameAddrAt(dst_pos + Vector2D<int>{0, src.size.y - 1}, config_);
+    const uint8_t *src_buf =
+      FrameAddrAt(src.pos + Vector2D<int>{0, src.size.y - 1}, config_);
+    for (int y = 0; y < src.size.y; ++y) {
+      memcpy(dst_buf, src_buf, bytes_per_pixel * src.size.x);
+      dst_buf -= bytes_per_scan_line;
+      src_buf -= bytes_per_scan_line;
     }
   }
 }
 
-// UI가 업데이터시에 shadow_buffer_에도 값을 쓰도록 함
-void Window::Write(Vector2D<int> pos, PixelColor c) {
-  data_[pos.y][pos.x] = c;
-  shadow_buffer_.Writer().Write(pos, c);
-}
+void Console::Newline() {
+  cursor_column_ = 0;
+  if (cursor_row_ < kRows - 1) {
+    ++cursor_row_;
+    return;
+  }
 
-// main.cpp
-// 전역 프레임 버퍼를 UEFI frame buffer config를 통해 초기화
-FrameBuffer screen;
-if (auto err = screen.Initialize(frame_buffer_config)) {
-  Log(kError, "failed to initialize frame buffer: %s at %s:%d\n",
-    err.Name(), err.File(), err.Line());
+  if (window_) {
+    // SetWindow 이후 동작
+    Rectangle<int> move_src{{0, 16}, {8 * kColumns, 16 * (kRows - 1)}};
+    window_->Move({0, 0}, move_src);
+    FillRectangle(*writer_, {0, 16 * (kRows - 1)}, {8 * kColumns, 16}, bg_color_);
+  } else {
+    // SetWindow 이전 동작
+    FillRectangle(*writer_, {0, 0}, {8 * kColumns, 16 * kRows}, bg_color_);
+    for (int row = 0; row < kRows - 1; ++row) {
+      memcpy(buffer_[row], buffer_[row + 1], kColumns + 1);
+      WriteString(*writer_, Vector2D<int>{0, 16 * row}, buffer_[row], fg_color_);
+    }
+    memset(buffer_[kRows - 1], 0, kColumns + 1);
+  }
 }
-
-layer_manager = new LayerManager;
-layer_manager->SetWriter(&screen);
 ```
 
-![핵심동작원리 1-1](img/9C-1.gif)
+![핵심동작원리 2-1](img/9D~E-2.gif)
 
 <br>
 
 ### 추가
-저자는 이 파트에서 `graphics`에서 정의된 `Vector2D`를 `PixelWriter`와 그 외 다양한 곳에서 사용하도록 리팩토링 하였다. 따라서 이 커밋에도 해당 변경사항이 적용되어있다. 
+`Console::SetWindow()`이전에 `Console::SetWriter()`를 통해 적절한 `PixelWriter`를 지정해주지 않으면 로그 출력 시에 처리되지 않는 오류가 발생할 수 있다.

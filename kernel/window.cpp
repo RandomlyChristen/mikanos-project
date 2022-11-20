@@ -58,3 +58,7 @@ const PixelColor &Window::At(Vector2D<int> pos) const {
 int Window::Width() const { return width_; }
 
 int Window::Height() const { return height_; }
+
+void Window::Move(Vector2D<int> dst_pos, const Rectangle<int>& src) {
+    shadow_buffer_.Move(dst_pos, src);
+}

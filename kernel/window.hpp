@@ -62,6 +62,14 @@ class Window {
     /** @brief 평면 드로잉 영역의 높이를 픽셀 단위로 반환합니다. */
     int Height() const;
 
+    /** @brief 이 창의 평면 그리기 영역 내에서 직사각형 영역을 이동합니다.
+     *
+     * @param src_pos   이동 원 사각형의 원점
+     * @param src_size  이동원 사각형의 크기
+     * @param dst_pos   대상의 원점
+     */
+    void Move(Vector2D<int> dst_pos, const Rectangle<int>& src);
+
   private:
     int width_, height_;
     std::vector<std::vector<PixelColor>> data_{};
