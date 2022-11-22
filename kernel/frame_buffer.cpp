@@ -83,6 +83,8 @@ Error FrameBuffer::Copy(Vector2D<int> dst_pos, const FrameBuffer &src) {
     const uint8_t *src_buf = FrameAddrAt({0, 0}, src.config_);
 
     for (int y = dst_start.y; y < dst_end.y; ++y) {
+        if ((dst_end.x - dst_start.x) < 0)
+            continue;
         memcpy(dst_buf, src_buf, bytes_per_pixel * (dst_end.x - dst_start.x));
         dst_buf += BytesPerScanLine(config_);
         src_buf += BytesPerScanLine(src.config_);

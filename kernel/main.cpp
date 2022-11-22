@@ -36,6 +36,8 @@ char console_buf[sizeof(Console)];
 Console* console;
 
 unsigned int mouse_layer_id;
+Vector2D<int> screen_size;
+Vector2D<int> mouse_position;
 
 int printk(const char* format, ...) {
     va_list ap;
@@ -58,12 +60,12 @@ int printk(const char* format, ...) {
 }
 
 void MouseObserver(int8_t displacement_x, int8_t displacement_y) {
-    layer_manager->MoveRelative(mouse_layer_id, {displacement_x, displacement_y});
-    StartLAPICTimer();
+    auto newpos = mouse_position + Vector2D<int>{displacement_x, displacement_y};
+    newpos = ElementMin(newpos, screen_size + Vector2D<int>{-1, -1});
+    mouse_position = ElementMax(newpos, {0, 0});
+
+    layer_manager->Move(mouse_layer_id, mouse_position);
     layer_manager->Draw();
-    auto elapsed = LAPICTimerElapsed();
-    StopLAPICTimer();
-    printk("MouseObserver: elapsed = %u\n", elapsed);
 }
 
 char memory_manager_buf[sizeof(BitmapMemoryManager)];
@@ -277,10 +279,11 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
         }
     }
 
-    const int kFrameWidth = frame_buffer_config.horizontal_resolution;
-    const int kFrameHeight = frame_buffer_config.vertical_resolution;
+    screen_size.x = frame_buffer_config.horizontal_resolution;
+    screen_size.y = frame_buffer_config.vertical_resolution;
+    mouse_position = {screen_size.x / 2, screen_size.y / 2};
 
-    auto bgwindow = std::make_shared<Window>(kFrameWidth, kFrameHeight, frame_buffer_config.pixel_format);
+    auto bgwindow = std::make_shared<Window>(screen_size.x, screen_size.y, frame_buffer_config.pixel_format);
     auto bgwriter = bgwindow->Writer();
 
     DrawDesktop(*bgwriter);
@@ -306,7 +309,7 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
         .ID();
     mouse_layer_id = layer_manager->NewLayer()
         .SetWindow(mouse_window)
-        .Move({kFrameWidth / 2, kFrameHeight / 2})
+        .Move(mouse_position)
         .ID();
 
     layer_manager->UpDown(bglayer_id, 0);
