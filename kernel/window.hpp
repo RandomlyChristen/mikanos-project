@@ -41,8 +41,9 @@ class Window {
      *
      * @param dst 그리기
      * @param position writer의 좌상을 기준으로 한 드로잉 위치
+     * @param area 
      */
-    void DrawTo(FrameBuffer &dst, Vector2D<int> position);
+    void DrawTo(FrameBuffer &dst, Vector2D<int> position, const Rectangle<int>& area);
 
     /** @brief 투명 색상을 설정합니다. */
     void SetTransparentColor(std::optional<PixelColor> c);
@@ -50,7 +51,7 @@ class Window {
     /** @brief 이 인스턴스에 붙은 WindowWriter 를 취득한다. */
     WindowWriter *Writer();
 
-    /** @brief 指定した位置にピクセルを書き込む。 */
+    /** @brief 윈도우의 특정 픽셀에 값을 c를 쓰는 함수 */
     void Write(Vector2D<int> pos, PixelColor c);
 
     /** @brief 지정된 위치의 픽셀을 반환합니다. */
@@ -70,6 +71,11 @@ class Window {
      */
     void Move(Vector2D<int> dst_pos, const Rectangle<int>& src);
 
+    /**
+     * @brief 평면 그리기 영역의 크기를 픽셀 단위로 반환합니다.
+     */
+    Vector2D<int> Size();
+
   private:
     int width_, height_;
     std::vector<std::vector<PixelColor>> data_{};
@@ -78,3 +84,5 @@ class Window {
 
     FrameBuffer shadow_buffer_{};
 };
+
+void DrawWindow(PixelWriter& writer, const char* title);

@@ -31,7 +31,9 @@ public:
     Layer& MoveRelative(Vector2D<int> pos_diff);
 
     /** @brief writer 에 현재 설정되어 있는 윈도우의 내용을 렌더링 한다. */
-    void DrawTo(FrameBuffer& screen) const;
+    void DrawTo(FrameBuffer &screen, const Rectangle<int>& area) const;
+
+    Vector2D<int> GetPosition();
 
 private:
     unsigned int id_;
@@ -51,7 +53,9 @@ public:
     Layer& NewLayer();
 
     /** @brief 현재 표시 상태에 있는 레이어를 그립니다. */
-    void Draw() const;
+    void Draw(const Rectangle<int>& area) const;
+
+    void Draw(unsigned int id) const;
 
     /** @brief 레이어의 위치 정보를 지정된 절대 좌표로 업데이트합니다. 다시 그리지는 않습니다. */
     void Move(unsigned int id, Vector2D<int> new_position);
@@ -70,6 +74,7 @@ public:
 
 private:
     FrameBuffer* screen_{ nullptr };
+    mutable FrameBuffer back_buffer_{};
     std::vector<std::unique_ptr<Layer>> layers_{};
     std::vector<Layer*> layer_stack_{};
     unsigned int latest_id_{0};

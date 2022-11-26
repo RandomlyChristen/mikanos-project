@@ -65,7 +65,6 @@ void MouseObserver(int8_t displacement_x, int8_t displacement_y) {
     mouse_position = ElementMax(newpos, {0, 0});
 
     layer_manager->Move(mouse_layer_id, mouse_position);
-    layer_manager->Draw();
 }
 
 char memory_manager_buf[sizeof(BitmapMemoryManager)];
@@ -293,41 +292,76 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
     mouse_window->SetTransparentColor(kMouseTransparentColor);
     DrawMouseCursor(mouse_window->Writer(), {0, 0});
 
+    auto main_window = std::make_shared<Window>(
+        160, 52, frame_buffer_config.pixel_format
+    );
+    DrawWindow(*(main_window->Writer()), "Hello Window");
+
     FrameBuffer screen;
     if (auto err = screen.Initialize(frame_buffer_config)) {
         Log(kError, "failed to initialize frame buffer: %s at %s:%d\n",
             err.Name(), err.File(), err.Line());
     }
 
+    auto console_window = std::make_shared<Window>(
+        Console::kColumns * 8, Console::kRows * 16, frame_buffer_config.pixel_format
+    );
+    console->SetWindow(console_window);
+
     layer_manager = new LayerManager;
     layer_manager->SetWriter(&screen);
-    console->SetWindow(bgwindow);
 
     auto bglayer_id = layer_manager->NewLayer()
         .SetWindow(bgwindow)
         .Move({0, 0})
         .ID();
+    auto main_window_layer_id = layer_manager->NewLayer()
+        .SetWindow(main_window)
+        .Move({300, 100})
+        .ID();
     mouse_layer_id = layer_manager->NewLayer()
         .SetWindow(mouse_window)
         .Move(mouse_position)
         .ID();
+    auto console_layer_id = layer_manager->NewLayer()
+        .SetWindow(console_window)
+        .Move({0, 0})
+        .ID();
+    
+    console->SetLayerID(console_layer_id);
 
     layer_manager->UpDown(bglayer_id, 0);
-    layer_manager->UpDown(mouse_layer_id, 1);
-    layer_manager->Draw();
+    layer_manager->UpDown(console_layer_id, 1);
+    layer_manager->UpDown(main_window_layer_id, 2);
+    layer_manager->UpDown(mouse_layer_id, 3);
+    layer_manager->Draw({{0, 0}, screen_size});
 
     std::array<Message, 32> main_queue_data;
     ArrayQueue<Message> main_queue{main_queue_data};
     ::main_queue = &main_queue;
+
+    char str[128];
+    uint32_t elapsed = 0;
 
     __asm__("sti");
     /**
      * @brief 외부 인터럽트 이벤트 루프
      */
     while (true) {
+        StartLAPICTimer();
+
+        sprintf(str, "%010u", elapsed);
+        FillRectangle(*(main_window->Writer()), {24, 28}, {8 * 10, 16}, {0xc6, 0xc6, 0xc6});
+        WriteString(*(main_window->Writer()), {24, 28}, str, {0, 0, 0});
+        layer_manager->Draw(main_window_layer_id);
+
+        elapsed = LAPICTimerElapsed();
+        StopLAPICTimer();
+
         __asm__("cli");
         if (main_queue.Count() == 0) {
-            __asm__("sti\n\thlt");
+            // __asm__("sti\n\thlt");
+            __asm__("sti");
             continue;
         }
 
