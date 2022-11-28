@@ -34,11 +34,14 @@ public:
     void DrawTo(FrameBuffer &screen, const Rectangle<int>& area) const;
 
     Vector2D<int> GetPosition();
+    Layer& SetDraggable(bool draggable);
+    bool IsDraggable() const;
 
 private:
     unsigned int id_;
     Vector2D<int> pos_;
     std::shared_ptr<Window> window_;
+    bool draggable_{false};
 };
 
 /** @brief LayerManager는 여러 레이어를 관리합니다. */
@@ -71,6 +74,8 @@ public:
     void UpDown(unsigned int id, int new_height);
     /** @brief 레이어를 숨깁니다. */
     void Hide(unsigned int id);
+
+    Layer* FindLayerByPosition(Vector2D<int> pos, unsigned int exclude_id) const;
 
 private:
     FrameBuffer* screen_{ nullptr };

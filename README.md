@@ -1,252 +1,73 @@
 # MikanOS project
-## Day 9B~E 최초의 윈도우와 깜박거림 해소(렌더링 최적화)
+## Day 9F~G 윈도우의 드래그 이동
 <br>
 
 ### 주요 개발 사항
-1. 무한루프를 통해 값을 증가시키고 그것을 윈도우에 표시하는 카운터 개발
-2. 카운터 값 갱신과 전체 화면의 재 렌더링이 매 루프 일어남에 따른 레이턴시 해소
+1. `MouseObserver`가 마우스 버튼 클릭 값을 받도록 드라이버 수정
+2. 마우스 위치에 따라 클릭이 발생한 위치의 레이어를 드래그 할 수 있도록 `layer` 구현 및 `MouseObserver` 수정
 
 <br>
 
 ### 핵심 동작 원리
-1. 단순히 윈도우(제목과 닫기버튼이 있는)를 그리고 해당 영역에 카운터를 표시
+1. 마우스 인터럽트가 발생하면 인터럽트 핸들러에 위치정보 뿐만 아니라 버튼 정보도 함께 전달하도록 수정
+   - `HIDBaseDriver::Buffer()`로부터 읽어온 배열의 첫번째 8비트는 버튼 정보를 포함
+   - `uint8_t buttons = Buffer()[0]`을 `OnDataReceived`에서 받아서 `NotifyMouseMove`를 전달
+   - 최종적으로 `NotifyMouseMove`가 클릭 이벤트를 인자에 포함하여 `MouseObserver`를 호출하도록 함
+   - 함수 타입은 `void (uint8_t buttons, int8_t displacement_x, int8_t displacement_y)`와 같도록 수정
 
 ```cpp
-// window.cpp
-void DrawWindow(PixelWriter& writer, const char* title) {
+// usb/classdriver/mouse.cpp
+Error HIDMouseDriver::OnDataReceived() {
+  uint8_t buttons = Buffer()[0];
+  ...
+  NotifyMouseMove(buttons, displacement_x, displacement_y);
   ...
 }
 
-// main.cpp
-auto main_window = std::make_shared<Window>(
-  160, 52, frame_buffer_config.pixel_format
-);
-DrawWindow(*(main_window->Writer()), "Hello Window");
-...
-auto main_window_layer_id = layer_manager->NewLayer()
-  .SetWindow(main_window)
-  .Move({300, 100})
-  .ID();
-layer_manager->UpDown(main_window_layer_id, 1);
-
-...
-
-char str[128];
-uint count = 0;
-
-__asm__("sti");
-/**
- * @brief 외부 인터럽트 이벤트 루프
- */
-while (true) {
-  ++count;
-  sprintf(str, "%010u", count);
-  FillRectangle(*(main_window->Writer()), {24, 28}, {8 * 10, 16}, {0xc6, 0xc6, 0xc6});
-  WriteString(*(main_window->Writer()), {24, 28}, str, {0, 0, 0});
-  layer_manager->Draw();
-
-  __asm__("cli");
-  if (main_queue.Count() == 0) {
-    // __asm__("sti\n\thlt");  // HLT를 제거하여 count 값이 계속 증가하도록 함
-    __asm__("sti");
-    continue;
+void HIDMouseDriver::NotifyMouseMove(uint8_t buttons, int8_t displacement_x, int8_t displacement_y) {
+  for (int i = 0; i < num_observers_; ++i) {
+    observers_[i](buttons, displacement_x, displacement_y);
   }
-  ...
 }
 ```
-
-![핵심동작원리 1-1](img/10B~E-1.gif)
-
-
-```cpp
-// main.cpp
-while (true) {
-  StartLAPICTimer();
-
-  sprintf(str, "%010u", elapsed);
-  FillRectangle(*(main_window->Writer()), {24, 28}, {8 * 10, 16}, {0xc6, 0xc6, 0xc6});
-  // 타이머가 렌더링에 소요된 시간을 측정하여 표시하게 수정
-  WriteString(*(main_window->Writer()), {24, 28}, str, {0, 0, 0});
-  layer_manager->Draw();
-
-  elapsed = LAPICTimerElapsed();
-  StopLAPICTimer();
-
-  __asm__("cli");
-  if (main_queue.Count() == 0) {
-    // __asm__("sti\n\thlt");
-    __asm__("sti");
-    continue;
-  }
-  ...
-}
-```
-
-![핵심동작원리 1-2](img/10B~E-2.png)
 
 <br>
 
-2. 카운터 값이 갱신되는 루프에서 매번 `LayerManager::Draw()` 호출로 인한 레이턴시
-   - 작은 영역의 윈도우에 해당하는 업데이트에도 항상 모든 화면 영역을 그리고 있음
-     - 이 업데이트가 매우 고속으로 일어나기 때문에 윈도우가 그려진지 얼마 되지 않아서 `bgwindow`로 덮어씌워짐
-     - 따라서 깜빡거리는 것으로 보임
-   - 이를 해소하기 위해서 `LayerManager::Draw()`를 `Layer`의 id와 영역에 해당하는 `Rectangle`을 받는 함수로 오버로딩
-     - `void LayerManager::Draw(const Rectangle<int>& area) const`
-       - 주어진 영역에 대해서만 그리기 수행
-     - `void LayerManager::Draw(unsigned int id) const`
-       - 주어진 레이어 id와 중첩되는 상위 레이어에 대해서 상기 메소드 호출
-   - 하위 그리기에서도 마찬가지로 중첩 영역에 대해서만 그리기가 수행되도록 수정
-   - 콘솔이 백그라운드와 분리된 자체 윈도우를 갖도록 수정
-   - 이동(`LayerManager::Move`, `LayerManager::MoveRelative`)는 이동되기 전 영역에 대한 업데이트가 필요함
-     - `Draw({old_pos, window_size})`을 통해 이동되기 전 영역 처리
-     - `Draw(id)`으로 이동 후 영역 처리
-
-```cpp
-// layer.cpp
-void LayerManager::Draw(const Rectangle<int>& area) const {
-  for (auto layer : layer_stack_) {
-    layer->DrawTo(*screen_, area);
-  }
-}
-
-void LayerManager::Draw(unsigned int id) const {
-  bool draw = false;
-  Rectangle<int> window_area;
-  for (auto layer : layer_stack_) {
-    if (layer->ID() == id) {
-      window_area.size = layer->GetWindow()->Size();
-      window_area.pos = layer->GetPosition();
-      draw = true;  // 이 이상의 레이어는 중첩그리기 수행
-    }
-    if (draw) {
-      layer->DrawTo(*screen_, window_area);
-    }
-  }
-}
-
-void LayerManager::Move(unsigned int id, Vector2D<int> new_position) {
-  auto layer = FindLayer(id);
-  const auto window_size = layer->GetWindow()->Size();
-  const auto old_pos = layer->GetPosition();
-  layer->Move(new_position);
-  Draw({old_pos, window_size});
-  Draw(id);
-}
-
-void LayerManager::MoveRelative(unsigned int id, Vector2D<int> pos_diff) {
-  auto layer = FindLayer(id);
-  const auto window_size = layer->GetWindow()->Size();
-  const auto old_pos = layer->GetPosition();
-  layer->MoveRelative(pos_diff);
-  Draw({old_pos, window_size});
-  Draw(id);
-}
-
-// window.cpp
-void Window::DrawTo(FrameBuffer &dst, Vector2D<int> position, const Rectangle<int>& area) {
-  if (!transparent_color_) {
-    Rectangle<int> window_area{position, this->Size()};
-    Rectangle<int> intersection = area & window_area;  // 곂치는 영역(실제 업데이트가 필요한 영역)
-    dst.Copy(intersection.pos, shadow_buffer_, {intersection.pos - position, intersection.size});
-    return;
-  }
-  ...
-}
-
-// main.cpp
-char str[128];
-uint count = 0;
-
-__asm__("sti");
-/**
- * @brief 외부 인터럽트 이벤트 루프
- */
-while (true) {
-  ++count;
-  sprintf(str, "%010u", count);
-  FillRectangle(*(main_window->Writer()), {24, 28}, {8 * 10, 16}, {0xc6, 0xc6, 0xc6});
-  WriteString(*(main_window->Writer()), {24, 28}, str, {0, 0, 0});
-  layer_manager->Draw(main_window_layer_id);  // 레이어 id 전달
-
-  __asm__("cli");
-  if (main_queue.Count() == 0) {
-    // __asm__("sti\n\thlt");
-    __asm__("sti");
-    continue;
-  }
-  ...
-}
-```
-
-![핵심동작원리 2-1](img/10B~E-3.gif)
+1. 드래그 할 레이어를 지정하고 마우스가 움직인 상대 위치로 이동
+   - 드래그가 가능한 레이어만을 지정하기 위해 레이어마다 `draggable_` 불리언 정보를 포함하도록 클래스 필드를 작성
+   - 마우스 클릭이 발생한 시점에 현재 마우스 위치로 바로 아래에 있는 윈도우를 찾음
+     - `std::find_if()`와 리버스 이터레이터를 통해 레이어 스택을 뒤에서부터 탐색
+   - 만약 그러한 윈도우를 포함한 레이어가 존재하고 해당 레이어가 `draggable_`이 참인지 확인
+   - 이후 호출된 `MouseObserver`는 이전 클릭상태와 현재 클릭상태를 비교해 **드래그**중인지를 판별
+   - 만약 드래그 중이라면 해당 레이어를 `MoveRelative()`함
 
 ```cpp
 // main.cpp
-char str[128];
-uint32_t elapsed = 0;
+void MouseObserver(uint8_t buttons, int8_t displacement_x, int8_t displacement_y) {
+  static unsigned int mouse_drag_layer_id = 0;
+  static uint8_t previous_buttons = 0;
 
-__asm__("sti");
-/**
- * @brief 외부 인터럽트 이벤트 루프
- */
-while (true) {
-  StartLAPICTimer();
-
-  sprintf(str, "%010u", elapsed);  // 이전보다 약 7배 고속화되었음
-  FillRectangle(*(main_window->Writer()), {24, 28}, {8 * 10, 16}, {0xc6, 0xc6, 0xc6});
-  WriteString(*(main_window->Writer()), {24, 28}, str, {0, 0, 0});
-  layer_manager->Draw(main_window_layer_id);
-
-  elapsed = LAPICTimerElapsed();
-  StopLAPICTimer();
-
-  __asm__("cli");
-  if (main_queue.Count() == 0) {
-    // __asm__("sti\n\thlt");
-    __asm__("sti");
-    continue;
-  }
+  const auto oldpos = mouse_position;
   ...
+  const auto posdiff = mouse_position - oldpos;
+  ...
+  const bool previous_left_pressed = (previous_buttons & 0x01);  // 1번째 비트에 따라 왼쪽클릭 여부를 확인
+  const bool left_pressed = (buttons & 0x01);
+  if (!previous_left_pressed && left_pressed) {
+    auto layer = layer_manager->FindLayerByPosition(mouse_position, mouse_layer_id);
+    if (layer && layer->IsDraggable()) {  // 클릭 위치에 있는 윈도우 확인
+      mouse_drag_layer_id = layer->ID();
+    }
+  } else if (previous_left_pressed && left_pressed) {
+    if (mouse_drag_layer_id > 0) {  // 드래그 중
+      layer_manager->MoveRelative(mouse_drag_layer_id, posdiff);
+    }
+  } else if (previous_left_pressed && !left_pressed) {  // 드래그를 놓음
+    mouse_drag_layer_id = 0;
+  }
+
+  previous_buttons = buttons;
 }
 ```
 
-![핵심동작원리 2-2](img/10B~E-4.png)
-
-<br>
-
-3. 고속 카운터의 영역에 마우스를 가져가보면 여전히 마우스가 깜빡이는 문제
-   - 해당 영역의 마우스가 온전히 그려진 시간이 매우 짧아서 생기는 문제
-     - 하위 레이어가 그려졌지만 상위 레이어가 아직 그려지지 않은 상황을 보기 때문에 깜빡이는 것
-   - 백버퍼(back buffer)를 이용하여 백버퍼에 렌더링을 수행, 이후 프레임 버퍼로 백버퍼를 복사
-     - 이렇게 하면 항상 온전히 그려진 중첩만을 실제 프레임 버퍼가 받기 때문에 깜빡임은 없어짐
-     - 단, 백버퍼로부터 프레임버퍼까지 복사가 추가적으로 발생하기 때문에 약간 느려짐
-
-```cpp
-// layer.cpp
-void LayerManager::Draw(const Rectangle<int>& area) const {
-  for (auto layer : layer_stack_) {
-    layer->DrawTo(back_buffer_, area);  // 백버퍼에 쓰기
-  }
-}
-
-void LayerManager::Draw(unsigned int id) const {
-  bool draw = false;
-  Rectangle<int> window_area;
-  for (auto layer : layer_stack_) {
-    if (layer->ID() == id) {
-      window_area.size = layer->GetWindow()->Size();
-      window_area.pos = layer->GetPosition();
-      draw = true;
-    }
-    if (draw) {
-      layer->DrawTo(back_buffer_, window_area);  // 백버퍼에 쓰기
-    }
-  }
-  // 마지막에만 프레임버퍼에 덮어쓰기
-  screen_->Copy(window_area.pos, back_buffer_, window_area);
-}
-```
-
-![핵심동작원리 3-1](img/10B~E-5.gif)
-
-![핵심동작원리 3-2](img/10B~E-6.png)
+![핵심동작원리 2-1](img/10F~G-1.gif)

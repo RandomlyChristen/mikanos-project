@@ -59,12 +59,38 @@ int printk(const char* format, ...) {
     return result;
 }
 
-void MouseObserver(int8_t displacement_x, int8_t displacement_y) {
+void MouseObserver(uint8_t buttons, int8_t displacement_x, int8_t displacement_y) {
+    static unsigned int mouse_drag_layer_id = 0;
+    static uint8_t previous_buttons = 0;
+
+    const auto oldpos = mouse_position;
     auto newpos = mouse_position + Vector2D<int>{displacement_x, displacement_y};
     newpos = ElementMin(newpos, screen_size + Vector2D<int>{-1, -1});
     mouse_position = ElementMax(newpos, {0, 0});
 
+    const auto posdiff = mouse_position - oldpos;
+
     layer_manager->Move(mouse_layer_id, mouse_position);
+
+    const bool previous_left_pressed = (previous_buttons & 0x01);
+    const bool left_pressed = (buttons & 0x01);
+    if (!previous_left_pressed && left_pressed) {
+        auto layer = layer_manager->FindLayerByPosition(mouse_position, mouse_layer_id);
+        if (layer && layer->IsDraggable()) {
+            mouse_drag_layer_id = layer->ID();
+            Log(kInfo, "Mouse Clicked on layer %d\n", mouse_drag_layer_id);
+        }
+    } else if (previous_left_pressed && left_pressed) {
+        if (mouse_drag_layer_id > 0) {
+            layer_manager->MoveRelative(mouse_drag_layer_id, posdiff);
+            Log(kInfo, "Mouse drag moved layer %d\n", mouse_drag_layer_id);
+        }
+    } else if (previous_left_pressed && !left_pressed) {
+        mouse_drag_layer_id = 0;
+        Log(kInfo, "Mouse drag ended\n");
+    }
+
+    previous_buttons = buttons;
 }
 
 char memory_manager_buf[sizeof(BitmapMemoryManager)];
@@ -317,6 +343,7 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
         .ID();
     auto main_window_layer_id = layer_manager->NewLayer()
         .SetWindow(main_window)
+        .SetDraggable(true)
         .Move({300, 100})
         .ID();
     mouse_layer_id = layer_manager->NewLayer()
