@@ -1,4 +1,5 @@
 #include "graphics.hpp"
+#include "logger.hpp"
 
 void RGBResv8BitPerColorPixelWriter::Write(Vector2D<int> pos,
                                            const PixelColor &c) {
@@ -44,4 +45,39 @@ void DrawDesktop(PixelWriter &writer) {
     FillRectangle(writer, {0, height - 50}, {width, 50}, {1, 8, 17});
     FillRectangle(writer, {0, height - 50}, {width / 5, 50}, {80, 80, 80});
     DrawRectangle(writer, {10, height - 40}, {30, 30}, {160, 160, 160});
+}
+
+FrameBufferConfig screen_config;
+PixelWriter* screen_writer;
+
+Vector2D<int> ScreenSize() {
+    return {
+            static_cast<int>(screen_config.horizontal_resolution),
+            static_cast<int>(screen_config.vertical_resolution)
+    };
+}
+
+namespace {
+    char pixel_writer_buf[sizeof(RGBResv8BitPerColorPixelWriter)];
+}
+
+void InitializeGraphics(const FrameBufferConfig& screen_config_) {
+    ::screen_config = screen_config_;
+
+    switch (screen_config.pixel_format) {
+        case kPixelRGBResv8BitPerColor:
+            ::screen_writer = new(pixel_writer_buf)
+                    RGBResv8BitPerColorPixelWriter{screen_config};
+            break;
+        case kPixelBGRResv8BitPerColor:
+            ::screen_writer = new(pixel_writer_buf)
+                    BGRResv8BitPerColorPixelWriter{screen_config};
+            break;
+        default:
+            exit(1);
+    }
+
+    Log(kInfo, "Resolution : %d x %d\n", screen_writer->Width(), screen_writer->Height());
+
+    DrawDesktop(*screen_writer);
 }

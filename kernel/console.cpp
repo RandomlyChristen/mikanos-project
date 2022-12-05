@@ -1,8 +1,10 @@
 #include "console.hpp"
 
+#include <cstring>
+
 #include "font.hpp"
 #include "layer.hpp"
-#include <cstring>
+#include "graphics.hpp"
 
 Console::Console(const PixelColor &fg_color, const PixelColor &bg_color)
     : writer_{nullptr}, window_{}, fg_color_{fg_color}, bg_color_{bg_color},
@@ -27,7 +29,11 @@ void Console::PutString(const char *s) {
 }
 
 void Console::SetLayerID(unsigned int layer_id) {
-    layer_id_ = layer_id;
+    layer_id_ = static_cast<int>(layer_id);
+}
+
+unsigned int Console::LayerID() const {
+    return layer_id_;
 }
 
 void Console::SetWriter(PixelWriter *writer) {
@@ -77,4 +83,17 @@ void Console::Refresh() {
         WriteString(*writer_, Vector2D<int>{0, 16 * row}, buffer_[row],
                     fg_color_);
     }
+}
+
+Console* console;
+
+namespace {
+    char console_buf[sizeof(Console)];
+}
+
+void InitializeConsole() {
+    console = new(console_buf) Console{
+            kDesktopFGColor, kDesktopBGColor
+    };
+    console->SetWriter(screen_writer);
 }

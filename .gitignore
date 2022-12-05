@@ -1,3 +1,5 @@
 .vscode
 *.img
 MikanLoaderX64
+.idea
+mnt

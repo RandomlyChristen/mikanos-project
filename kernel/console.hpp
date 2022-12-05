@@ -5,7 +5,7 @@
 #include <memory>
 
 class Console {
-  public:
+public:
     static const int kRows = 25, kColumns = 80;
 
     Console(const PixelColor &fg_color, const PixelColor &bg_color);
@@ -13,8 +13,9 @@ class Console {
     void SetWriter(PixelWriter *writer);
     void SetWindow(const std::shared_ptr<Window> &window);
     void SetLayerID(unsigned int layer_id);
+    unsigned int LayerID() const;
 
-  private:
+private:
     void Newline();
     void Refresh();
 
@@ -25,3 +26,7 @@ class Console {
     int cursor_row_, cursor_column_;
     int layer_id_;
 };
+
+extern Console* console;
+
+void InitializeConsole();

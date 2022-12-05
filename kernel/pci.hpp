@@ -61,6 +61,8 @@ namespace pci {
      */
     uint16_t ReadVendorId(uint8_t bus, uint8_t device, uint8_t function);
 
+    uint16_t ReadVendorId(const Device& device);
+
     /**
      * @brief 주어진 PCI Configuration으로부터 device id를 반환하는 함수
      * @param bus PCI 버스 번호
@@ -195,3 +197,5 @@ namespace pci {
         MSITriggerMode trigger_mode, MSIDeliveryMode delivery_mode,
         uint8_t vector, unsigned int num_vector_exponent);
 }
+
+void InitializePCI();

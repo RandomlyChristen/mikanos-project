@@ -13,3 +13,5 @@ const size_t kPageDirectoryCount = 64;
  * 궁극적으로 CR3 레지스터가 올바르게 설정된 페이지 테이블을 가리킵니다.
  */
 void SetupIdentityPageTable();
+
+void InitializePaging();

@@ -41,6 +41,10 @@ void SetCodeSegment(
     uint32_t limit
 );
 
+const uint16_t kKernelCS = 1 << 3;
+const uint16_t kKernelSS = 2 << 3;
+const uint16_t kKernelDS = 0;
+
 /**
  * @brief 주어진 입력으로부터 data segment 기술자를 생성
  * @param desc SegmentDescriptor
@@ -61,3 +65,5 @@ void SetDataSegment(
  * @brief 설정된 GDT 정보를 바탕으로 LGDT를 실행
  */
 void SetupSegments();
+
+void InitializeSegmentation();

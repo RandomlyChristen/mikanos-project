@@ -8,7 +8,7 @@ OBJS = main.o graphics.o font.o cp1251/cp1251.o newlib_support.o console.o pci.o
        usb/classdriver/mouse.o
 DEPENDS = $(join $(dir $(OBJS)),$(addprefix .,$(notdir $(OBJS:.o=.d))))
 
-DEVENV_DIR = $(HOME)/make-os/devenv
+DEVENV_DIR = ../devenv
 EDK_DIR = $(HOME)/edk2
 
 INCS += -I. \

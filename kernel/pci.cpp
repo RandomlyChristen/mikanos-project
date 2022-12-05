@@ -201,6 +201,10 @@ namespace pci {
         return ReadData() & 0xffffu;
     }
 
+    uint16_t ReadVendorId(const Device& device) {
+        return ReadVendorId(device.bus, device.device, device.function);
+    }
+
     uint16_t ReadDeviceId(uint8_t bus, uint8_t device, uint8_t function) {
         WriteAddress(MakeAddress(bus, device, function, 0x00u));
         return (ReadData() >> 16) & 0xffffu;
@@ -329,5 +333,21 @@ namespace pci {
         }
         Log(kInfo, "msg_addr : 0x%08x, msg_data : 0x%08x\n", msg_addr, msg_data);
         return ConfigureMSI(dev, msg_addr, msg_data, num_vector_exponent);
+    }
+}
+
+void InitializePCI() {
+    if (auto err = pci::ScanAllBus()) {
+        Log(kError, "ScanAllBus: %s\n", err.Name());
+        exit(1);
+    }
+
+    for (int i = 0; i < pci::num_device; ++i) {
+        const auto& dev = pci::devices[i];
+        auto vendor_id = pci::ReadVendorId(dev);
+        auto class_code = pci::ReadClassCode(dev.bus, dev.device, dev.function);
+        Log(kDebug, "%d.%d.%d: vend %04x, class %08x, head %02x\n",
+            dev.bus, dev.device, dev.function,
+            vendor_id, class_code, dev.header_type);
     }
 }
