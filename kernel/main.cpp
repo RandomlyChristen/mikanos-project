@@ -29,12 +29,6 @@ int printk(const char* format, ...) {
     result = vsprintf(s, format, ap);
     va_end(ap);
 
-    StartLAPICTimer();
-    console->PutString(s);
-    auto elapsed = LAPICTimerElapsed();
-    StopLAPICTimer();
-
-    sprintf(s, "[%9d]", elapsed);
     console->PutString(s);
 
     return result;
@@ -93,42 +87,51 @@ extern "C" void KernelMainNewStack(const FrameBufferConfig& frame_buffer_config_
     InitializeMainWindow();
     InitializeMouse();
 
+    InitializeLAPICTimer(*main_queue);
+
+    timer_manager->AddTimer(Timer(100, 1));
+    timer_manager->AddTimer(Timer(500, -1));
+
     layer_manager->Draw({{0, 0}, ScreenSize()});
 
     char str[128];
-    uint32_t elapsed = 0;
+    uint32_t count = 0;
 
     __asm__("sti");
     /**
      * @brief 외부 인터럽트 이벤트 루프
      */
     while (true) {
-        StartLAPICTimer();
-
-        sprintf(str, "%010u", elapsed);
+        sprintf(str, "%010u", count);
         FillRectangle(*(main_window->Writer()), {24, 28}, {8 * 10, 16}, {0xc6, 0xc6, 0xc6});
         WriteString(*(main_window->Writer()), {24, 28}, str, {0, 0, 0});
         layer_manager->Draw(main_window_layer_id);
 
-        elapsed = LAPICTimerElapsed();
-        StopLAPICTimer();
+        __asm__("cli");     // critical section start
+        count = timer_manager->CurrentTick();
 
-        __asm__("cli");
         if (main_queue->empty()) {
-            // __asm__("sti\n\thlt");
-            __asm__("sti");
+             __asm__("sti\n\thlt");
             continue;
         }
 
         Message msg = main_queue->front();
         main_queue->pop_front();
-        __asm__("sti");
+        __asm__("sti");     // critical section end
 
         switch (msg.type) {
             case Message::kNull:
                 break;
             case Message::kInterruptXHCI:
                 usb::xhci::ProcessEvents();
+                break;
+            case Message::kTimerTimeout:
+                printk("Timer: timeout = %lu, value = %d\n",
+                       msg.arg.timer.timeout, msg.arg.timer.value);
+                if (msg.arg.timer.value > 0) {
+                    timer_manager->AddTimer(
+                            Timer(msg.arg.timer.timeout + 100, msg.arg.timer.value + 1));
+                }
                 break;
             default:
                 Log(kError, "Unknown message type: %d\n", msg.type);

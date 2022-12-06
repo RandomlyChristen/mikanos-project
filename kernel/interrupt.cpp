@@ -5,6 +5,7 @@
 #include "asmfunc.h"
 #include "segment.hpp"
 #include "logger.hpp"
+#include "timer.hpp"
 
 std::array<InterruptDescriptor, 256> idt;
 
@@ -21,7 +22,6 @@ void SetIDTEntry(
     desc.segment_selector = segment_selector;
 }
 
-
 void NotifyEndOfInterrupt() {
     volatile auto end_of_interrupt = reinterpret_cast<uint32_t*>(0xfee000b0);
     *end_of_interrupt = 0;
@@ -35,6 +35,12 @@ namespace {
         msg_queue->push_back(Message{Message::kInterruptXHCI});
         NotifyEndOfInterrupt();
     }
+
+    __attribute__((interrupt))
+    void IntHandlerLAPICTimer(InterruptFrame* frame) {
+        LAPICTimerOnInterrupt();
+        NotifyEndOfInterrupt();
+    }
 }
 
 void InitializeInterrupt(std::deque<Message>* msg_queue_) {
@@ -45,6 +51,12 @@ void InitializeInterrupt(std::deque<Message>* msg_queue_) {
                 reinterpret_cast<uint64_t>(IntHandlerXHCI),
                 kKernelCS);
     Log(kInfo, "Vector : %d, Interrupt descriptor with cs 0x%02x\n", InterruptVector::kXHCI, kKernelCS);
+
+    SetIDTEntry(idt[InterruptVector::kLAPICTimer],
+                MakeIDTAttr(DescriptorType::kInterruptGate, 0),
+                reinterpret_cast<uint64_t>(IntHandlerLAPICTimer),
+                kKernelCS);
+    Log(kInfo, "Vector : %d, Interrupt descriptor with cs 0x%02x\n", InterruptVector::kLAPICTimer, kKernelCS);
 
     LoadIDT(sizeof(idt) - 1, reinterpret_cast<uintptr_t>(&idt[0]));
     Log(kInfo, "IDT : 0x%08x Loaded\n", reinterpret_cast<uintptr_t>(&(idt[0])));

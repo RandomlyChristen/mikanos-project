@@ -22,7 +22,7 @@ rm -f $DISK_IMG
 qemu-img create -f raw $DISK_IMG 200M
 mkfs.fat -n 'MIKAN OS' -s 2 -f 2 -R 32 -F 32 $DISK_IMG
 
-if [[ "$OSTYPE" == "darwin"* ]]; then
+if [[ "$OSTYPE-tp" == "darwin"* ]]; then
   hdiutil attach $DISK_IMG -mountpoint $MOUNT_POINT
 else
   $DEVENV_DIR/mount_image.sh $DISK_IMG $MOUNT_POINT
@@ -36,8 +36,8 @@ then
 fi
 sleep 0.5
 
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  sudo umount $MOUNT_POINT
-else
+if [[ "$OSTYPE-tp" == "darwin"* ]]; then
   hdiutil detach $MOUNT_POINT
+else
+  sudo umount $MOUNT_POINT
 fi
